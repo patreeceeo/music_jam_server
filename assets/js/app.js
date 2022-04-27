@@ -48,18 +48,21 @@ window.liveSocket = liveSocket
 
 button.addEventListener("mousedown", downListener)
 button.addEventListener("mouseup", upListener)
+button.addEventListener("mouseout", upListener)
 
 function downListener() {
-  console.log("sending down msg")
   channel.push("button_down", {})
+  console.log("sent down")
 }
 function upListener() {
   channel.push("button_up", {})
+  console.log("sent up")
 }
 channel.on("button_down", _payload => {
-  console.log("received down msg")
+  console.log("received down")
   paragraph.innerHTML = "button is pressed!"
 })
 channel.on("button_up", _payload => {
+  console.log("received up")
   paragraph.innerHTML = "button is NOT pressed"
 })
