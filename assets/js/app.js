@@ -51,18 +51,18 @@ button.addEventListener("mouseup", upListener)
 button.addEventListener("mouseout", upListener)
 
 function downListener() {
-  channel.push("button_down", {})
+  channel.push("update_instrument", {body: {down: true}})
   console.log("sent down")
 }
 function upListener() {
-  channel.push("button_up", {})
+  channel.push("update_instrument", {body: {down: false}})
   console.log("sent up")
 }
-channel.on("button_down", _payload => {
+channel.on("update_instrument", payload => {
   console.log("received down")
-  paragraph.innerHTML = "button is pressed!"
-})
-channel.on("button_up", _payload => {
-  console.log("received up")
-  paragraph.innerHTML = "button is NOT pressed"
+  if(payload.body.down) {
+    paragraph.innerHTML = "button is pressed!"
+  } else {
+    paragraph.innerHTML = "button is NOT pressed"
+  }
 })
