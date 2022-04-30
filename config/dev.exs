@@ -26,7 +26,7 @@ config :music_jam_server, MusicJamServerWeb.Endpoint,
   secret_key_base: "3QH/SQltPHGNGkNj6trgQWeT1+CuSGnXkPMw39xeybLAJrcjmV8vf2VlAmE9Hp6I",
   watchers: [
     # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
-    esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]}
+    node: ["esbuild.js", "--watch", cd: Path.expand("../assets", __DIR__)]
   ]
 
 # ## SSL Support
