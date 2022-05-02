@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@types/phoenix": "^1.5.4",
+    "@types/webaudiofont": "git+https://github.com/patreeceeo/types__webaudiofont.git",
     "esbuild": "^0.12.24"
   }
 }
