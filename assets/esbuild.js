@@ -15,7 +15,7 @@ let opts = {
   entryPoints: ['js/app.js'],
   bundle: true,
   logLevel: 'info',
-  target: 'es2016',
+  target: 'es2017',
   outdir: '../priv/static/assets'
 }
 if (mode === 'watch') {
