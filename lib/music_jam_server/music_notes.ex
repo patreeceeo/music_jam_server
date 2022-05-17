@@ -25,46 +25,31 @@ defmodule MusicJamServer.MusicNotes do
     Enum.find_index(list_names(), fn hay -> needle == hay end)
   end
 
-  @spec get_pitch(note()) :: integer()
-  def get_pitch({note_name, octave}) do
-    (octave * 12) + find_name_index(note_name)
-  end
-
-  @spec compare(note(), note()) :: integer()
-  def compare({a_name, a_octave}, {b_name, b_octave}) do
-    a_scalar = find_name_index(a_name) + a_octave * 12
-    b_scalar = find_name_index(b_name) + b_octave * 12
-    if(a_scalar > b_scalar) do
-      -1
-    else
-      if (a_scalar === b_scalar) do
-        0
-      else
-        1
-      end
-    end
-  end
-
-  @spec next_note(note()) :: note()
-  def next_note({note_name, octave}) do
-    index = find_name_index(note_name)
-    names = list_names()
-    if(index === length(names) - 1) do
-      { Enum.at(names, 0), octave + 1 }
-    else
-      { Enum.at(names, index + 1), octave }
-    end
-  end
-
   @spec interpolate(note(), note(), acc :: list(note())) :: list(note())
-  def interpolate(from, to, acc \\ []) do
-    case compare(from, to) do
-      -1 ->
+  def interpolate(first, last, acc \\ []) do
+    first_scalar = to_scalar(first)
+    last_scalar = to_scalar(last)
+    if first_scalar > last_scalar do
         raise "MusicNotes.interpolate: first arg should be lower pitch"
-      1 ->
-        Enum.concat([from], interpolate(next_note(from), to, acc))
-      0 ->
-        [to]
     end
+    if first_scalar < last_scalar do
+        Enum.concat([first], interpolate(from_scalar(first_scalar + 1), last, acc))
+    else
+        [last]
+    end
+  end
+
+  @spec from_scalar(integer()) :: note()
+  def from_scalar(scalar) do
+    names = list_names()
+    note_name = Enum.at(names, rem(scalar, 12))
+    octave = floor(scalar / 12)
+    {note_name, octave}
+  end
+
+  @spec to_scalar(note()) :: integer()
+  def to_scalar({note_name, octave}) do
+    index = find_name_index(note_name)
+    index + octave * 12
   end
 end
