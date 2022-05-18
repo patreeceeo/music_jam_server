@@ -18,6 +18,7 @@ defmodule MusicJamServerWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
+    get "/insts/fretboard", PageController, :show_fretboard
   end
 
   # Other scopes may use custom stacks.

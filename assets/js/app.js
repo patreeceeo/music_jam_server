@@ -27,20 +27,20 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 import {WebAudioFontPlayer} from "../vendor/WebAudioFontPlayer"
-import sf2_0480_Chaos from './sf2/0480_Chaos'
-import sf2_0390_Aspirin from './sf2/0390_Aspirin'
-import {C3, G3, C4, C5, d5} from './notes'
+import sf2_guitar from './sf2/0251_Acoustic_guitar'
 
 var AudioContextFunc = window.AudioContext || window.webkitAudioContext;
 var audioContext = new AudioContextFunc();
 var player = new WebAudioFontPlayer();
 
+function $(selector) {
+  return Array.prototype.slice.apply(document.querySelectorAll(selector))
+}
+
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 topbar.show()
-console.time("adjustPreset")
 const promises = [
-  player.adjustPreset(audioContext, sf2_0480_Chaos),
-  player.adjustPreset(audioContext, sf2_0390_Aspirin)
+  player.adjustPreset(audioContext, sf2_guitar)
 ]
 Promise.all(promises).then(() => {
   topbar.progress(1)
@@ -51,33 +51,31 @@ Promise.all(promises).then(() => {
   var gainBass = audioContext.createGain();gainBass.connect(audioContext.destination);gainBass.gain.value=0.7;
   var gainHit = audioContext.createGain();gainHit.connect(audioContext.destination);gainHit.gain.value=0.5;
   var bpm = 120;
-  var N = 4 * 60 / bpm;
-  // function orchestra(pitch, duration){return {gain:gainHit,preset:_tone_0550_Chaos_sf2_file,pitch:pitch,duration:duration*N};}
-  function synth(pitch, duration){return {gain:gainSynth,preset:sf2_0480_Chaos,pitch:pitch,duration:duration*N};}
-  function bass(pitch, duration){return {gain:gainBass,preset:sf2_0390_Aspirin,pitch:pitch,duration:duration*N};}
-  // function drum(){return {gain:gainDrums,preset:_drum_36_6_JCLive_sf2_file,pitch:36,duration:1};}
-  // function snare(){return {gain:gainDrums,preset:_drum_40_6_JCLive_sf2_file,pitch:38,duration:1};}
-  // function hihat(){return {gain:gainDrums,preset:_drum_42_6_JCLive_sf2_file,pitch:42,duration:1};}
-  // function open(){return {gain:gainDrums,preset:_drum_46_6_JCLive_sf2_file,pitch:46,duration:1};}
   function playNote(gain, preset, pitch, duration) {
     player.playNote(audioContext, gain, preset, pitch, duration);
   }
 
-  function playBass(pitch, duration) {
-    playNote(gainBass, sf2_0390_Aspirin, pitch, duration);
+  function playGuiar(pitch, duration) {
+    playNote(gainBass, sf2_guitar, pitch, duration);
   }
 
-  function play() {
-    playBass(C4);
+  function play(e) {
+    const pitch = parseInt(e.target.dataset.pitch);
+    playGuiar(pitch, 2);
+  }
+
+  function playIfDown(e) {
+    if(e.buttons > 0) {
+      play(e)
+    }
   }
   function stop() {
-    player.stop(audioContext, gainBass)
+    // player.stop(audioContext, gainBass)
   }
 
-  document.querySelector("#button").addEventListener("mousedown", play)
-  document.querySelector("#button").addEventListener("mouseup", stop)
-
-
+  $("[data-role=play-voice]").map((button) => button.addEventListener("mousedown", play))
+  $("[data-role=play-voice]").map((button) => button.addEventListener("mouseover", playIfDown))
+  $("[data-role=play-voice]").map((button) => button.addEventListener("mouseup", stop))
 
 
   // let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

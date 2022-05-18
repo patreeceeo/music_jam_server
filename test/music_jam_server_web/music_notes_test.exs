@@ -42,7 +42,7 @@ defmodule MusicJamServer.MusicNotesTest do
       f: 7,
       G: 7,
       g: 7,
-      A: 7
+      A: 7,
       ]
     assert MusicJamServer.MusicNotes.interpolate({:f, 4}, {:A, 7}) === expected
   end
