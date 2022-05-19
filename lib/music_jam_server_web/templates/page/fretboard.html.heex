@@ -1,3 +1,4 @@
+<!-- TODO turn this into component -->
 <svg class="instrument" preserveAspectRatio="xMidYMid meet" viewBox={@fretboard.viewbox}>
   <defs>
     <linearGradient id="fretboard" x1="42%" y1="0%" x2="0%" y2="90%">
@@ -64,9 +65,10 @@
         y={(string_index + 1) * 28}
         width={@fretboard.fret_width(note_index)}
         height="8"
-        fill="rgba(200, 200, 200, 0.6)"
+        fill={if string_index === @playing_string_index, do: "red", else: "rgba(200, 200, 200, 0.6)"}
         data-role="play-voice"
         data-pitch={to_scalar(note)}
+        phx-click={JS.push("play_voice", value: %{ string_index: string_index } )}
       />
     <% end %>
   <% end %>
