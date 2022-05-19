@@ -25,6 +25,7 @@ defmodule MusicJamServer.MusicNotes do
     Enum.find_index(list_names(), fn hay -> needle == hay end)
   end
 
+  # TODO Refactor to take scalar notes as args
   @spec interpolate(note(), note(), acc :: list(note())) :: list(note())
   def interpolate(first, last, acc \\ []) do
     first_scalar = to_scalar(first)

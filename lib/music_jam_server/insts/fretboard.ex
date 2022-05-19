@@ -47,7 +47,7 @@ defmodule MusicJamServer.Insts.Fretboard do
   end
 
   def is_inlay_fret?(fret_number) do
-    IO.inspect(rem(fret_number + 1, 12), label: "rem")
-    Enum.find([3, 5, 7, 9, 0], fn n -> n == rem(fret_number + 1, 12) end) != nil
+    # a little weird with inlay on first "fret" because that "fret" affords the open string in the current design
+    Enum.find([3, 5, 7, 9, 0], fn n -> n == rem(fret_number + 1, 12) - 1 end) != nil
   end
 end
