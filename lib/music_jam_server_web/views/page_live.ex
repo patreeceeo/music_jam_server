@@ -3,7 +3,7 @@ defmodule MusicJamServerWeb.PageLive do
 
   def mount(_params, _assigns, socket) do
     Registry.register(Registry.PubSub, "room:lobby", nil)
-    {:ok, assign(socket, playing_voice_ids: MapSet.new(), timer_value: 0)}
+    {:ok, assign(socket, playing_voice_ids: MapSet.new())}
   end
 
   def render(assigns) do
