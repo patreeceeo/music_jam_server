@@ -46,6 +46,11 @@ defmodule MusicJamServer.Insts.Fretboard do
     end
   end
 
+  def string_path(string_index, note_index, _playing, _time) do
+    y = (string_index + 1) * 28
+    "M #{fret_distance(note_index)} #{y} L #{fret_distance(note_index + 1)} #{y}"
+  end
+
   def is_inlay_fret?(fret_number) do
     # a little weird with inlay on first "fret" because that "fret" affords the open string in the current design
     Enum.find([3, 5, 7, 9, 0], fn n -> n == rem(fret_number + 1, 12) - 1 end) != nil

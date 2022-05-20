@@ -979,6 +979,7 @@ class WebAudioFontPlayer {
         envelope.gain.cancelScheduledValues(when);
         envelope.gain.setValueAtTime(this.noZeroVolume(ahdsr[0].volume * volume), when);
         for (var i = 0; i < ahdsr.length; i++) {
+
             if (ahdsr[i].duration > 0) {
                 if (ahdsr[i].duration + lastTime > duration) {
                     var r = 1 - (ahdsr[i].duration + lastTime - duration) / ahdsr[i].duration;

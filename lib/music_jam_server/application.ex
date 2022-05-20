@@ -15,9 +15,10 @@ defmodule MusicJamServer.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: MusicJamServer.PubSub},
       # Start the Endpoint (http/https)
-      MusicJamServerWeb.Endpoint
+      MusicJamServerWeb.Endpoint,
       # Start a worker by calling: MusicJamServer.Worker.start_link(arg)
       # {MusicJamServer.Worker, arg}
+      {Registry, [keys: :duplicate, name: Registry.PubSub]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -76,8 +76,8 @@ Promise.all(promises).then(() => {
 
   function pushUpdate(event) {
     const pitch = parseInt(event.target.dataset.pitch);
-    const voice_index = parseInt(event.target.dataset.voiceIndex);
-    channel.push("update_instrument", {pitch, voice_index})
+    const voice_id = parseInt(event.target.dataset.voiceId);
+    channel.push("update_instrument", {voice_id: voice_id, pitch, volume: 1, sliding: false})
   }
 
   function downListener(event) {
@@ -88,7 +88,15 @@ Promise.all(promises).then(() => {
       pushUpdate(event)
     }
   }
-  channel.on("update_instrument", payload => {
-    playGuiar(payload.pitch, 2)
+  const voiceInfo = {};
+  channel.on("update_instrument", ({voice_id, volume, pitch, sliding}) => {
+    if(volume > 0) {
+      playGuiar(pitch)
+    }
+    voiceInfo[voice_id] ||= {}
+    clearTimeout(voiceInfo[voice_id].timeout)
+    voiceInfo[voice_id].timeout = setTimeout(() => {
+      channel.push("update_instrument", {voice_id, volume: 0, pitch, sliding})
+    }, 5000) // TODO get actual time from AHDSR
   })
 })

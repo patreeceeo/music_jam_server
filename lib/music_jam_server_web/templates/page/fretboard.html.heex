@@ -55,20 +55,23 @@
   <%= if @fretboard.is_inlay_fret?(note_index) do %>
     <circle
       cx={@fretboard.fret_distance(note_index) + @fretboard.fret_width(note_index) / 2}
-      cy={@fretboard.height / 2}
+      cy={@fretboard.height() / 2}
       r={16}
       fill="rgba(0, 0, 0, 0.05)"
     />
   <% end %>
-      <rect
+        <!-- TODO custom cursor -->
+      <path
+        d={@fretboard.string_path(string_index, note_index, MapSet.member?(@playing_voice_ids, string_index), 0)}
         x={@fretboard.fret_distance(note_index)}
         y={(string_index + 1) * 28}
         width={@fretboard.fret_width(note_index)}
         height="8"
-        fill={if string_index === @playing_string_index, do: "red", else: "rgba(200, 200, 200, 0.6)"}
+        cursor="crosshair"
+        stroke={if MapSet.member?(@playing_voice_ids, string_index), do: "red", else: "rgba(200, 200, 200, 0.6)"}
         data-role="play-voice"
         data-pitch={to_scalar(note)}
-        phx-click={JS.push("play_voice", value: %{ string_index: string_index } )}
+        data-voice-id={string_index}
       />
     <% end %>
   <% end %>
