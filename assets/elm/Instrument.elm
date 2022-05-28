@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseDownString, createMouseEvent)
+port module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseDownString, createMouseEvent, sendMessage, PlaySoundCmd)
 
 -- IN-HOUSE MODULES
 
@@ -12,6 +12,16 @@ import Svg
 import Svg.Attributes exposing (..)
 import Svg.Events
 import Html
+
+
+-- PORTS
+
+type alias PlaySoundCmd = { soundId : String
+    , pitch : Float
+    , volume : Float
+    }
+
+port sendMessage : PlaySoundCmd -> Cmd msg
 
 
 -- MODEL
@@ -101,8 +111,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         MouseDownString index event ->
-            ( setCurrentPitch model index (toFloat(event.offsetX) / instW * toFloat(fretCount))
-            , Cmd.none
+          let
+              pitch = (toFloat(event.offsetX) / instW * toFloat(fretCount))
+          in
+            ( setCurrentPitch model index pitch
+            , sendMessage (PlaySoundCmd "acoustic-guitar" pitch 40)
             )
 
 
