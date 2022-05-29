@@ -2,7 +2,7 @@ module InstrumentTests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (createInstrument, createInstrumentVoice, createMouseEvent, mouseDownString, setCurrentPitch, update, sendMessage, PlaySoundCmd)
+import Instrument exposing (createInstrument, createInstrumentVoice, createMouseEvent, mouseOverVoice, setCurrentPitch, update, sendMessage, PlaySoundCmd, getPitchFromOffset)
 import Json.Encode as Encode
 import Test exposing (..)
 import Test.Html.Event as Event
@@ -39,7 +39,7 @@ suite =
                     { voices = Array.fromList [ voice1, modifiedVoice2, voice3 ]
                     }
                     (setCurrentPitch instrument 1 42)
-        , describe "MouseDownString event"
+        , describe "MouseOverVoice event"
             [ test "generation" <|
                 \_ ->
                     let
@@ -59,13 +59,18 @@ suite =
                             Encode.object
                                 [ ( "offsetX", Encode.int 500 )
                                 , ( "offsetY", Encode.int 0 )
+                                , ( "buttons", Encode.int 1 )
                                 ]
+
+                        mouseEvent = createMouseEvent 500 0 1
+
+                        mouseOverVoiceMsg = mouseOverVoice 1 1000 mouseEvent
                     in
-                    Instrument.view instrument 0
+                    Instrument.view instrument 0 1000
                         |> Query.fromHtml
                         |> Query.find [ Selector.id "instrument-voice-1" ]
-                        |> Event.simulate (Event.custom "mousedown" simulatedEventObject)
-                        |> Event.expect (mouseDownString 1 (createMouseEvent 500 0))
+                        |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
+                        |> Event.expect mouseOverVoiceMsg
               , test "update model" <|
                 \_ ->
                     let
@@ -81,12 +86,11 @@ suite =
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
 
-                        mouseEvent = createMouseEvent 500 0
+                        mouseEvent = createMouseEvent 500 0 1
 
-                        ( updatedInstrument, _) = update (mouseDownString 1 mouseEvent) instrument
+                        ( updatedInstrument, _) = update (mouseOverVoice 1 1000 mouseEvent) instrument
                     in
-                    -- TODO helper function for calculating pitch
-                        Expect.equal (setCurrentPitch instrument 1 (500 / 2000 * 24)) updatedInstrument
+                        Expect.equal (setCurrentPitch instrument 1 (getPitchFromOffset 500 1000)) updatedInstrument
               , test "send port message" <|
                 \_ ->
                     let
@@ -102,12 +106,12 @@ suite =
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
 
-                        mouseEvent = createMouseEvent 500 0
+                        mouseEvent = createMouseEvent 500 0 1
 
-                        ( _, playSoundCmd) = update (mouseDownString 1 mouseEvent) instrument
+                        ( _, playSoundCmd) = update (mouseOverVoice 1 1000 mouseEvent) instrument
 
                     in
-                        Expect.equal playSoundCmd (sendMessage (PlaySoundCmd "acoustic-guitar" (500 / 2000 * 24) 40))
+                        Expect.equal playSoundCmd (sendMessage (PlaySoundCmd "acoustic-guitar" (getPitchFromOffset 500 1000) 40))
 
             ]
         ]
