@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 -- IN-HOUSE MODULES
+import Instrument exposing (createInstrument, createInstrumentVoice)
 -- STDLIB MODULES
 
 import Browser
@@ -9,8 +10,6 @@ import Html
 import Instrument
 import Json.Decode as D
 import Time
-
-
 
 -- MAIN
 
@@ -30,47 +29,203 @@ main =
 
 
 type alias Flags =
-    { instrument : Instrument.Model }
+    { screenWidth: Int
+    , instrument : Instrument.Model
+    }
 
 
 type alias Model =
     { timeInMillis : Int
+    , screenWidth: Int
     , instrument : Maybe Instrument.Model
     }
 
+
+defaultInstrument : Instrument.Model
+defaultInstrument = createInstrument [
+  createInstrumentVoice  [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88
+      ]
+  , createInstrumentVoice [
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ]
+  , createInstrumentVoice [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ]
+  , createInstrumentVoice [
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74
+      ]
+  , createInstrumentVoice [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ]
+  , createInstrumentVoice [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ]
+      ]
 
 init : D.Value -> ( Model, Cmd Msg )
 init flags =
     ( case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
             { timeInMillis = 0
-            , instrument = Just (.instrument decodedFlags)
+            , screenWidth = decodedFlags.screenWidth
+            , instrument = Just ( .instrument decodedFlags)
             }
 
         Err _ ->
-            { timeInMillis = 0, instrument = Nothing }
+            { timeInMillis = 0, screenWidth = 0, instrument = Just defaultInstrument }
     , Cmd.none
     )
 
 
-
--- setCurrentPitchInModel : Model -> Int -> Float -> Model
--- setCurrentPitchInModel model voiceIndex pitch =
---     case model.instrument of
---         Just instrument ->
---           Instrument.setCurrentPitch instrument voiceIndex pitch
---           |> asInstrumentIn model
---         Nothing ->
---             model
--- asInstrumentIn : Model -> Instrument -> Model
--- asInstrumentIn model instrument =
---     { model | instrument = Just instrument }
--- DECODE JSON
-
-
 decodeFlags : D.Decoder Flags
 decodeFlags =
-    D.map Flags
+    D.map2 Flags
+        (D.field "screenWidth" D.int)
         (D.field "instrument" Instrument.decodeInstrument)
 
 
@@ -124,7 +279,7 @@ view model =
     case model.instrument of
         Just instrument ->
             Html.div []
-                [ Html.map InstrumentMsg (Instrument.view instrument model.timeInMillis)
+                [ Html.map InstrumentMsg (Instrument.view instrument model.timeInMillis model.screenWidth)
                 ]
 
         Nothing ->

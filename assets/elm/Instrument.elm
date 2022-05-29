@@ -1,4 +1,4 @@
-port module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseDownString, createMouseEvent, sendMessage, PlaySoundCmd)
+port module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseOverVoice, createMouseEvent, sendMessage, PlaySoundCmd, getPitchFromOffset)
 
 -- IN-HOUSE MODULES
 
@@ -102,21 +102,27 @@ decodeInstrumentVoices =
 -- UPDATE
 
 
-type Msg = MouseDownString Int MouseEvent
+type Msg = MouseOverVoice Int Int MouseEvent
 
-mouseDownString : Int -> MouseEvent -> Msg
-mouseDownString index event = MouseDownString index event
+mouseOverVoice : Int -> Int -> MouseEvent -> Msg
+mouseOverVoice index screenWidth event = MouseOverVoice index screenWidth event
+
+getPitchFromOffset : Int -> Int -> Float
+getPitchFromOffset offset screenWidth = toFloat(offset) / toFloat(screenWidth) * toFloat(fretCount)
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MouseDownString index event ->
-          let
-              pitch = (toFloat(event.offsetX) / instW * toFloat(fretCount))
-          in
+        MouseOverVoice index screenWidth event ->
+          if event.buttons > 0 then
+            let
+                pitch = (getPitchFromOffset event.offsetX screenWidth)
+            in
             ( setCurrentPitch model index pitch
             , sendMessage (PlaySoundCmd "acoustic-guitar" pitch 40)
             )
+          else
+            (model, Cmd.none)
 
 
 -- VIEW
@@ -342,25 +348,29 @@ frets =
 type alias MouseEvent =
     { offsetX : Int
     , offsetY : Int
+    , buttons : Int
     }
 
-createMouseEvent : Int -> Int -> MouseEvent
-createMouseEvent offsetX offsetY =
+createMouseEvent : Int -> Int -> Int -> MouseEvent
+createMouseEvent offsetX offsetY buttons =
   {
     offsetX = offsetX
     , offsetY = offsetY
+    , buttons = buttons
     }
 
-onMouseDownString : (MouseEvent -> msg) -> Svg.Attribute msg
-onMouseDownString target =
-  Svg.Events.on "mousedown" (D.map target decodeMouseDownStringEvent)
 
-decodeMouseDownStringEvent : D.Decoder MouseEvent
-decodeMouseDownStringEvent =
-    D.map2
+onMouseOver : (MouseEvent -> msg) -> Svg.Attribute msg
+onMouseOver event =
+  Svg.Events.on "mouseover" (D.map event decodeMouseEvent)
+
+decodeMouseEvent : D.Decoder MouseEvent
+decodeMouseEvent =
+    D.map3
         MouseEvent
         (D.field "offsetX" D.int)
         (D.field "offsetY" D.int)
+        (D.field "buttons" D.int)
 
 stringIndexes : List Int
 stringIndexes =
@@ -377,27 +387,27 @@ stringPath index =
     "M" ++ joinNums " " [ 0, stringY index, instW, stringY index ]
 
 
-string : Int -> Svg.Svg Msg
-string index =
+string : Int -> Int -> Svg.Svg Msg
+string index screenWidth =
     Svg.path
         [ d (stringPath index)
         , cursor "crosshair"
         , strokeWidth "2"
         , stroke "rgba(255, 255, 255, 0.5)"
-        , onMouseDownString(MouseDownString(index))
+        , onMouseOver(MouseOverVoice index screenWidth)
         , id ("instrument-voice-" ++ String.fromInt(index))
         ]
         []
 
 
-strings : List (Svg.Svg Msg)
-strings =
+strings : Int -> List (Svg.Svg Msg)
+strings screenWidth =
     List.map
-        (\index -> string index)
+        (\index -> string index screenWidth)
         stringIndexes
 
-view : Model -> Int -> Html.Html Msg
-view model time =
+view : Model -> Int -> Int -> Html.Html Msg
+view model time screenWidth =
     Svg.svg
         [ class "instrument"
         , preserveAspectRatio "xMidYMid meet"
@@ -408,6 +418,6 @@ view model time =
          , frets
          ]
             ++ inlays
-            ++ strings
+            ++ strings screenWidth
         )
 
