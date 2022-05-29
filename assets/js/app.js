@@ -36,6 +36,9 @@ const AudioContextFunc = win.AudioContext || win.webkitAudioContext;
 const audioContext = new AudioContextFunc();
 const player = new WebAudioFontPlayer();
 
+window.sessionStorage.setItem("phx:live-socket:debug", "false")
+
+
 function $(selector) {
   return Array.prototype.slice.apply(document.querySelectorAll(selector))
 }
@@ -45,58 +48,76 @@ topbar.show()
 const promises = [
   player.adjustPreset(audioContext, sf2_guitar)
 ]
-Promise.all(promises).then(() => {
-  topbar.progress(1)
-  topbar.hide()
-  console.timeEnd("adjustPreset")
-  var gainDrums = audioContext.createGain();gainDrums.connect(audioContext.destination);gainDrums.gain.value=0.5;
-  var gainSynth = audioContext.createGain();gainSynth.connect(audioContext.destination);gainSynth.gain.value=0.3;
-  var gainBass = audioContext.createGain();gainBass.connect(audioContext.destination);gainBass.gain.value=0.7;
-  var gainHit = audioContext.createGain();gainHit.connect(audioContext.destination);gainHit.gain.value=0.5;
-  function playNote(gain, preset, pitch, duration) {
-    player.playNote(audioContext, gain, preset, pitch, duration);
-  }
 
-  function playGuiar(pitch, duration) {
-    playNote(gainBass, sf2_guitar, pitch, duration);
-  }
+/** @typedef {{ pitch: number, soundId: string, volume: number }} ElmMsg */
 
-  const playVoiceBtns = $("[data-role=play-voice]")
-  playVoiceBtns.map((button) => button.addEventListener("mousedown", downListener))
-  playVoiceBtns.map((button) => button.addEventListener("mouseover", overListener))
+/** @typedef {{ ports: { sendMessage: {
+  *                  subscribe: (callback: (msg: ElmMsg) => void) => void
+*            }}}} ElmApp
+*/
+
+/** @param {ElmApp} elmApp */
+win.init = (elmApp) => {
+
+  Promise.all(promises).then(() => {
+    topbar.progress(1)
+    topbar.hide()
+    console.timeEnd("adjustPreset")
+    var gainDrums = audioContext.createGain();gainDrums.connect(audioContext.destination);gainDrums.gain.value=0.5;
+    var gainSynth = audioContext.createGain();gainSynth.connect(audioContext.destination);gainSynth.gain.value=0.3;
+    var gainBass = audioContext.createGain();gainBass.connect(audioContext.destination);gainBass.gain.value=0.7;
+    var gainHit = audioContext.createGain();gainHit.connect(audioContext.destination);gainHit.gain.value=0.5;
+
+    elmApp.ports.sendMessage.subscribe((msg) => {
+      console.log(msg.pitch)
+      playNote(gainBass, sf2_guitar, msg.pitch, 5);
+    })
+
+    function playNote(gain, preset, pitch, duration) {
+      player.playNote(audioContext, gain, preset, pitch, duration);
+    }
+
+    function playGuiar(pitch, duration) {
+      playNote(gainBass, sf2_guitar, pitch, duration);
+    }
+
+    const playVoiceBtns = $("[data-role=play-voice]")
+    playVoiceBtns.map((button) => button.addEventListener("mousedown", downListener))
+    playVoiceBtns.map((button) => button.addEventListener("mouseover", overListener))
 
 
-  let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-  let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
-  let socket = new Socket("/socket", {params: {token: win.userToken}})
+    let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+    let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+    let socket = new Socket("/socket", {params: {token: win.userToken}})
 
 
-  liveSocket.connect()
-  socket.connect()
+    liveSocket.connect()
+    socket.connect()
 
-  function pushUpdate(event) {
-    const pitch = parseInt(event.target.dataset.pitch);
-    const voice_id = parseInt(event.target.dataset.voiceId);
-    channel.push("update_instrument", {voice_id: voice_id, pitch, volume: 1, sliding: false})
-  }
+    function pushUpdate(event) {
+      const pitch = parseInt(event.target.dataset.pitch);
+      const voice_id = parseInt(event.target.dataset.voiceId);
+      channel.push("update_instrument", {voice_id: voice_id, pitch, volume: 1, sliding: false})
+    }
 
-  function downListener(event) {
-    pushUpdate(event)
-  }
-  function overListener(event) {
-    if(event.buttons > 0) {
+    function downListener(event) {
       pushUpdate(event)
     }
-  }
-  const voiceInfo = {};
-  channel.on("update_instrument", ({voice_id, volume, pitch, sliding}) => {
-    if(volume > 0) {
-      playGuiar(pitch)
+    function overListener(event) {
+      if(event.buttons > 0) {
+        pushUpdate(event)
+      }
     }
-    voiceInfo[voice_id] ||= {}
-    clearTimeout(voiceInfo[voice_id].timeout)
-    voiceInfo[voice_id].timeout = setTimeout(() => {
-      channel.push("update_instrument", {voice_id, volume: 0, pitch, sliding})
-    }, 5000) // TODO get actual time from AHDSR
+    const voiceInfo = {};
+    channel.on("update_instrument", ({voice_id, volume, pitch, sliding}) => {
+      if(volume > 0) {
+        playGuiar(pitch)
+      }
+      voiceInfo[voice_id] ||= {}
+      clearTimeout(voiceInfo[voice_id].timeout)
+      voiceInfo[voice_id].timeout = setTimeout(() => {
+        channel.push("update_instrument", {voice_id, volume: 0, pitch, sliding})
+      }, 5000) // TODO get actual time from AHDSR
+    })
   })
-})
+};

@@ -13,8 +13,14 @@
     "phoenix_live_view": "file:../deps/phoenix_live_view"
   },
   "devDependencies": {
+    "@elm-tooling/elm-language-server": "^2.4.1",
     "@types/phoenix": "^1.5.4",
     "@types/webaudiofont": "git+https://github.com/patreeceeo/types__webaudiofont.git",
+    "chokidar": "^3.5.3",
+    "elm": "^0.19.1-5",
+    "elm-format": "^0.8.5",
+    "elm-review": "^2.7.2",
+    "elm-test": "^0.19.1-revision7",
     "esbuild": "^0.12.24"
   }
 }

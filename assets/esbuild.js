@@ -1,4 +1,6 @@
 const esbuild = require('esbuild')
+const chokidar = require("chokidar");
+const { execSync } = require("child_process");
 
 // Decide which mode to proceed with
 let mode = 'build'
@@ -42,3 +44,23 @@ esbuild.build(opts).then((result) => {
 }).catch((error) => {
   process.exit(1)
 })
+
+
+
+// Exit the process when standard input closes due to:
+//   https://hexdocs.pm/elixir/1.10.2/Port.html#module-zombie-operating-system-processes
+//
+process.stdin.on("end", function() {
+    console.log("standard input end");
+    process.exit();
+});
+
+process.stdin.resume();
+
+// Set up chokidar to watch all elm files and rebuild the elm app ignoring process errors
+chokidar.watch("elm/**/*.elm", { ignored: "node_modules" }).on("all", (event, path) => {
+    console.log(event, path);
+    try {
+        execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
+    } catch (error) {}
+});
