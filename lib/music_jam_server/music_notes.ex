@@ -1,6 +1,7 @@
 defmodule MusicJamServer.MusicNotes do
   @type note_name :: :C | :c | :D | :d | :E | :F | :f | :G | :g | :A | :a | :B
   @type note :: { note_name(), integer() }
+  @type scalar_note :: integer()
 
   @spec list_names() :: list(note_name())
   def list_names do
@@ -25,19 +26,12 @@ defmodule MusicJamServer.MusicNotes do
     Enum.find_index(list_names(), fn hay -> needle == hay end)
   end
 
-  # TODO Refactor to take scalar notes as args
-  @spec interpolate(note(), note(), acc :: list(note())) :: list(note())
-  def interpolate(first, last, acc \\ []) do
-    first_scalar = to_scalar(first)
-    last_scalar = to_scalar(last)
-    if first_scalar > last_scalar do
+  @spec interpolate(scalar_note(), scalar_note()) :: list(scalar_note())
+  def interpolate(first, last) do
+    if first > last do
         raise "MusicNotes.interpolate: first arg should be lower pitch"
     end
-    if first_scalar < last_scalar do
-        Enum.concat([first], interpolate(from_scalar(first_scalar + 1), last, acc))
-    else
-        [last]
-    end
+    Enum.to_list(first..last)
   end
 
   @spec from_scalar(integer()) :: note()

@@ -1,13 +1,19 @@
 defmodule MusicJamServer.Insts.Fretboard do
-  def strings(octave \\ 3) do
-    [
-      MusicJamServer.MusicNotes.interpolate({:E, octave + 2}, {:E, octave + 4}),
-      MusicJamServer.MusicNotes.interpolate({:B, octave + 1}, {:B, octave + 3}),
-      MusicJamServer.MusicNotes.interpolate({:G, octave + 1}, {:G, octave + 3}),
-      MusicJamServer.MusicNotes.interpolate({:D, octave+1}, {:D, octave + 3}),
-      MusicJamServer.MusicNotes.interpolate({:A, octave}, {:A, octave + 2}),
-      MusicJamServer.MusicNotes.interpolate({:E, octave}, {:E, octave + 2}),
-    ]
+  def json(octave \\ 3) do
+    interpolate = &MusicJamServer.MusicNotes.interpolate/2
+    to_scalar = &MusicJamServer.MusicNotes.to_scalar/1
+    Enum.map([
+      interpolate.(to_scalar.({:E, octave + 2}), to_scalar.({:E, octave + 4})),
+      interpolate.(to_scalar.({:B, octave + 1}), to_scalar.({:B, octave + 3})),
+      interpolate.(to_scalar.({:G, octave + 1}), to_scalar.({:G, octave + 3})),
+      interpolate.(to_scalar.({:D, octave+1}), to_scalar.({:D, octave + 3})),
+      interpolate.(to_scalar.({:A, octave}), to_scalar.({:A, octave + 2})),
+      interpolate.(to_scalar.({:E, octave}), to_scalar.({:E, octave + 2})),
+    ], fn notes -> %{
+      currentPitch: 0,
+      currentVolume: 0,
+      notes: notes
+    } end)
   end
 
   def width do
@@ -55,4 +61,5 @@ defmodule MusicJamServer.Insts.Fretboard do
     # a little weird with inlay on first "fret" because that "fret" affords the open string in the current design
     Enum.find([3, 5, 7, 9, 0], fn n -> n == rem(fret_number + 1, 12) - 1 end) != nil
   end
+
 end

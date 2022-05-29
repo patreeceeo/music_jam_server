@@ -7,9 +7,23 @@
     <%= csrf_meta_tag() %>
     <%= live_title_tag assigns[:page_title] || "MusicJamServer", suffix: " · Phoenix Framework" %>
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
-    <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
+    <script phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/Elm.Main.js")}></script>
   </head>
   <body>
     <%= @inner_content %>
+    <div id="myapp"></div>
+    <script phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
+    <script >
+      const config = {
+        node: document.getElementById('myapp'),
+        flags: {
+          screenWidth: window.screen.width,
+          instrument: <%= raw instrument() %>
+        }
+      }
+      const elmApp = Elm.Main.init(config);
+      window.init(elmApp)
+
+    </script>
   </body>
 </html>
