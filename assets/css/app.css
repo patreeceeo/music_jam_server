@@ -7,3 +7,8 @@ body {
 .instrument {
   max-width: 100%;
 }
+
+.inert {
+  user-select: none;
+  pointer-events: none;
+}

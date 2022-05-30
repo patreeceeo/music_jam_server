@@ -1,9 +1,6 @@
 port module Instrument exposing (Model, Msg, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, getPitchFromOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update, view)
 
 -- IN-HOUSE MODULES
-
-import Utils exposing (joinNums, joinPoints)
-
 -- STDLIB MODULES
 
 import Array exposing (Array)
@@ -13,6 +10,7 @@ import Json.Encode as E
 import Svg
 import Svg.Attributes exposing (..)
 import Svg.Events
+import Utils exposing (joinNums, joinPoints)
 
 
 
@@ -288,8 +286,8 @@ inlayFretIndexes =
     List.filter (\index -> isInlayFret index) fretIndexes
 
 
-inlays : List (Svg.Svg Msg)
-inlays =
+viewInlays : List (Svg.Svg Msg)
+viewInlays =
     List.map
         (\index ->
             Svg.circle
@@ -447,12 +445,12 @@ decodeMouseEvent =
 
 stringIndexes : List Int
 stringIndexes =
-    List.range 1 6
+    List.range 0 5
 
 
 stringY : Int -> Float
 stringY index =
-    toFloat (index * 28)
+    toFloat ((index + 1) * 28)
 
 
 stringPath : Int -> String
@@ -460,8 +458,8 @@ stringPath index =
     "M" ++ joinNums " " [ 0, stringY index, instW, stringY index ]
 
 
-string : Int -> Int -> Svg.Svg Msg
-string index screenWidth =
+viewString : Int -> Int -> Svg.Svg Msg
+viewString index screenWidth =
     Svg.path
         [ d (stringPath index)
         , cursor "crosshair"
@@ -473,11 +471,39 @@ string index screenWidth =
         []
 
 
-strings : Int -> List (Svg.Svg Msg)
-strings screenWidth =
+viewStrings : Int -> List (Svg.Svg Msg)
+viewStrings screenWidth =
     List.map
-        (\index -> string index screenWidth)
+        (\index -> viewString index screenWidth)
         stringIndexes
+
+
+viewDebugVoiceNote : Int -> ( Int, Float ) -> Svg.Svg Msg
+viewDebugVoiceNote voiceIndex indexedNote =
+    let
+        ( noteIndex, note ) =
+            indexedNote
+    in
+    Svg.text_ [ y (String.fromFloat (stringY voiceIndex)), x (String.fromFloat (fretDistance noteIndex + 10.0)), fill "rgba(255, 255, 255, 0.5)", class "inert" ] [ Svg.text (String.fromFloat note) ]
+
+
+viewDebugVoiceNotes : ( Int, Voice ) -> List (Svg.Svg Msg)
+viewDebugVoiceNotes indexedVoice =
+    let
+        ( voiceIndex, voice ) =
+            indexedVoice
+    in
+    List.map (viewDebugVoiceNote voiceIndex) (Array.toIndexedList voice.notes)
+
+
+viewDebugNotes : Model -> List (Svg.Svg Msg)
+viewDebugNotes model =
+    List.concatMap viewDebugVoiceNotes (Array.toIndexedList model.voices)
+
+
+viewDebugging : Model -> List (Svg.Svg Msg)
+viewDebugging model =
+    viewDebugNotes model ++ [ Svg.text_ [ y "215" ] [ Svg.text ("current pitch: " ++ String.fromFloat (getCurrentPitch model 1 0.0)) ] ]
 
 
 view : Model -> Int -> Int -> Html.Html Msg
@@ -491,7 +517,7 @@ view model time screenWidth =
          , outerPoly
          , frets
          ]
-            ++ inlays
-            ++ strings screenWidth
-            ++ [ Svg.text_ [ y "215" ] [ Svg.text ("current pitch: " ++ String.fromFloat (getCurrentPitch model 1 0.0)) ] ]
+            ++ viewInlays
+            ++ viewStrings screenWidth
+            ++ viewDebugging model
         )
