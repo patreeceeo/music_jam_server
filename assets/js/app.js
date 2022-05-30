@@ -49,9 +49,11 @@ const promises = [
   player.adjustPreset(audioContext, sf2_guitar)
 ]
 
-/** @typedef {{ pitch: number, soundId: string, volume: number }} ElmMsg */
+/** @typedef {{ type: "playSound", data: ElmMsgDataPlaySound } | { type: "logError", data: ElmMsgDataLogError }} ElmMsg */
+/** @typedef {{ pitch: number, soundId: string, volume: number }} ElmMsgDataPlaySound */
+/** @typedef {{ message: string }} ElmMsgDataLogError */
 
-/** @typedef {{ ports: { sendMessage: {
+/** @typedef {{ ports: { sendPortMessage: {
   *                  subscribe: (callback: (msg: ElmMsg) => void) => void
 *            }}}} ElmApp
 */
@@ -68,9 +70,15 @@ win.init = (elmApp) => {
     var gainBass = audioContext.createGain();gainBass.connect(audioContext.destination);gainBass.gain.value=0.7;
     var gainHit = audioContext.createGain();gainHit.connect(audioContext.destination);gainHit.gain.value=0.5;
 
-    elmApp.ports.sendMessage.subscribe((msg) => {
-      console.log(msg.pitch)
-      playNote(gainBass, sf2_guitar, msg.pitch, 5);
+    elmApp.ports.sendPortMessage.subscribe((msg) => {
+      switch(msg.type) {
+        case "playSound":
+          playNote(gainBass, sf2_guitar, msg.data.pitch, 5);
+          break;
+        case "logError":
+          console.error(msg.data.message)
+          break;
+      }
     })
 
     function playNote(gain, preset, pitch, duration) {

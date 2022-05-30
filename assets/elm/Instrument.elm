@@ -1,4 +1,4 @@
-port module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseOverVoice, createMouseEvent, sendMessage, PlaySoundCmd, getPitchFromOffset)
+port module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, setCurrentPitch, decodeInstrument, view, update, Msg, mouseOverVoice, createMouseEvent, sendPortMessage, PortMessage(..), getPitchFromOffset, encodePortMessage)
 
 -- IN-HOUSE MODULES
 
@@ -8,6 +8,7 @@ import Utils exposing (joinPoints, joinNums)
 
 import Array exposing (Array)
 import Json.Decode as D
+import Json.Encode as E
 import Svg
 import Svg.Attributes exposing (..)
 import Svg.Events
@@ -16,20 +17,38 @@ import Html
 
 -- PORTS
 
-type alias PlaySoundCmd = { soundId : String
-    , pitch : Float
-    , volume : Float
-    }
+type PortMessage = PlaySound { soundId : String, pitch : Float, volume : Float }
+  | LogError String
 
-port sendMessage : PlaySoundCmd -> Cmd msg
+port sendPortMessage : E.Value -> Cmd msg
 
+encodePortMessage : PortMessage -> E.Value
+encodePortMessage msg =
+  case msg of
+    PlaySound data ->
+      E.object
+        [ ("type", E.string "playSound" )
+        , ("data", E.object
+          [ ("soundId", E.string data.soundId )
+          , ("pitch", E.float data.pitch )
+          , ("volume", E.float data.volume )
+          ]
+          )
+        ]
+    LogError errMsg ->
+      E.object
+        [ ("type", E.string "logError" )
+        , ("data", E.object
+          [ ("message", E.string errMsg) ]
+          )
+        ]
 
 -- MODEL
 
 type alias Voice =
     { currentPitch : Float
     , currentVolume : Float
-    , notes : List Float
+    , notes : Array Float
     }
 
 
@@ -48,7 +67,7 @@ createInstrumentVoice notes =
   {
     currentPitch = 0
     , currentVolume = 0
-    , notes = notes
+    , notes = Array.fromList notes
   }
 
 
@@ -79,6 +98,15 @@ setCurrentPitch instrument voiceIndex pitch =
     Nothing ->
       instrument
 
+getCurrentPitch : Model -> Int -> Float -> Float
+getCurrentPitch instrument voiceIndex default =
+  case Array.get voiceIndex instrument.voices of
+    Just voice ->
+      voice.currentPitch
+
+    Nothing ->
+      Debug.log "returning default" default
+  
 
 -- DECODE JSON
 
@@ -95,7 +123,7 @@ decodeInstrumentVoices =
         (D.map3 Voice
             (D.field "currentPitch" D.float)
             (D.field "currentVolume" D.float)
-            (D.field "notes" (D.list D.float))
+            (D.field "notes" (D.array D.float))
         )
 
 
@@ -107,8 +135,22 @@ type Msg = MouseOverVoice Int Int MouseEvent
 mouseOverVoice : Int -> Int -> MouseEvent -> Msg
 mouseOverVoice index screenWidth event = MouseOverVoice index screenWidth event
 
-getPitchFromOffset : Int -> Int -> Float
-getPitchFromOffset offset screenWidth = toFloat(offset) / toFloat(screenWidth) * toFloat(fretCount)
+getPitchFromOffset : Int -> Int -> Model -> Int -> Result String Float
+getPitchFromOffset offset screenWidth instrument voiceIndex = 
+  let
+      linearRatio = toFloat(offset) / toFloat(screenWidth)
+      noteIndex = round(linearRatio * toFloat(fretCount))
+  in
+  case (Array.get voiceIndex instrument.voices) of
+    Just voice ->
+      case (Array.get noteIndex voice.notes) of
+        Just note ->
+          Ok note
+        Nothing ->
+          Err ("OutOfRangeErr: no note corresponding to offset " ++ (String.fromInt offset) ++ " on voice index " ++ String.fromInt voiceIndex)
+    Nothing ->
+      Err ("OutOfRangeErr: no voice corresponding to index " ++ String.fromInt voiceIndex)
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -116,11 +158,16 @@ update msg model =
         MouseOverVoice index screenWidth event ->
           if event.buttons > 0 then
             let
-                pitch = (getPitchFromOffset event.offsetX screenWidth)
+                pitchResult = (getPitchFromOffset event.offsetX screenWidth model index)
             in
-            ( setCurrentPitch model index pitch
-            , sendMessage (PlaySoundCmd "acoustic-guitar" pitch 40)
-            )
+            case pitchResult of
+              Ok pitch ->
+                ( setCurrentPitch model (Debug.log "setting voice index " index) (Debug.log "to pitch " pitch)
+                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", pitch = pitch, volume = 40}))
+                )
+              Err errMsg ->
+                ( model, sendPortMessage (encodePortMessage (LogError errMsg)))
+
           else
             (model, Cmd.none)
 
@@ -353,7 +400,7 @@ type alias MouseEvent =
 
 createMouseEvent : Int -> Int -> Int -> MouseEvent
 createMouseEvent offsetX offsetY buttons =
-  {
+    {
     offsetX = offsetX
     , offsetY = offsetY
     , buttons = buttons
@@ -419,5 +466,6 @@ view model time screenWidth =
          ]
             ++ inlays
             ++ strings screenWidth
+            ++ [Svg.text_ [ y "215" ] [Svg.text ("current pitch: " ++ (String.fromFloat (getCurrentPitch model 1 0.0)))]]
         )
 
