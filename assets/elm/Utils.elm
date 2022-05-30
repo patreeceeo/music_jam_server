@@ -1,4 +1,4 @@
-module Utils exposing (joinPoints, joinNums)
+module Utils exposing (joinNums, joinPoints)
 
 
 joinNums : String -> List Float -> String

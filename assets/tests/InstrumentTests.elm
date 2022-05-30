@@ -2,7 +2,7 @@ module InstrumentTests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (createInstrument, createInstrumentVoice, createMouseEvent, mouseOverVoice, setCurrentPitch, update, sendPortMessage, PortMessage(..), getPitchFromOffset, encodePortMessage)
+import Instrument exposing (PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, getPitchFromOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update)
 import Json.Encode as Encode
 import Test exposing (..)
 import Test.Html.Event as Event
@@ -40,21 +40,23 @@ suite =
                     }
                     (setCurrentPitch instrument 1 42)
         , test "getPitchFromOffset" <|
-          \_ ->
-            let
+            \_ ->
+                let
                     voice1 =
                         createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                     instrument =
                         createInstrument [ voice1 ]
 
-                    getPitchResult = getPitchFromOffset 500 1000 instrument 1
-            in
-            case getPitchResult of
-              Ok pitch ->
-                Expect.equal 8 pitch
-              Err errMsg ->
-                Expect.fail errMsg
+                    getPitchResult =
+                        getPitchFromOffset 500 1000 instrument 1
+                in
+                case getPitchResult of
+                    Ok pitch ->
+                        Expect.equal 8 pitch
+
+                    Err errMsg ->
+                        Expect.fail errMsg
         , describe "MouseOverVoice event"
             [ test "generation" <|
                 \_ ->
@@ -78,16 +80,18 @@ suite =
                                 , ( "buttons", Encode.int 1 )
                                 ]
 
-                        mouseEvent = createMouseEvent 500 0 1
+                        mouseEvent =
+                            createMouseEvent 500 0 1
 
-                        mouseOverVoiceMsg = mouseOverVoice 1 1000 mouseEvent
+                        mouseOverVoiceMsg =
+                            mouseOverVoice 1 1000 mouseEvent
                     in
                     Instrument.view instrument 0 1000
                         |> Query.fromHtml
                         |> Query.find [ Selector.id "instrument-voice-1" ]
                         |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
                         |> Event.expect mouseOverVoiceMsg
-              , test "update model" <|
+            , test "update model" <|
                 \_ ->
                     -- TODO this test needs to be broken up?
                     let
@@ -103,15 +107,22 @@ suite =
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
 
-                        mouseEvent = createMouseEvent 500 0 1
+                        mouseEvent =
+                            createMouseEvent 500 0 1
 
-                        ( updatedInstrument, _) = update (mouseOverVoice 1 1000 mouseEvent) instrument
-                        getPitchResult = getPitchFromOffset 500 1000 instrument 1
+                        ( updatedInstrument, _ ) =
+                            update (mouseOverVoice 1 1000 mouseEvent) instrument
+
+                        getPitchResult =
+                            getPitchFromOffset 500 1000 instrument 1
                     in
-                        case getPitchResult of
-                          Ok pitch -> Expect.equal (setCurrentPitch instrument 1 pitch) updatedInstrument
-                          Err errMsg -> Expect.fail errMsg
-              , test "send port message" <|
+                    case getPitchResult of
+                        Ok pitch ->
+                            Expect.equal (setCurrentPitch instrument 1 pitch) updatedInstrument
+
+                        Err errMsg ->
+                            Expect.fail errMsg
+            , test "send port message" <|
                 \_ ->
                     let
                         voice1 =
@@ -126,19 +137,20 @@ suite =
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
 
-                        mouseEvent = createMouseEvent 500 0 1
+                        mouseEvent =
+                            createMouseEvent 500 0 1
 
-                        ( _, playSoundCmd) = update (mouseOverVoice 1 1000 mouseEvent) instrument
+                        ( _, playSoundCmd ) =
+                            update (mouseOverVoice 1 1000 mouseEvent) instrument
 
-                        getPitchResult = getPitchFromOffset 500 1000 instrument 1
-
+                        getPitchResult =
+                            getPitchFromOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
-                      Ok pitch ->
-                        Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", pitch = pitch, volume = 40})))
-                      Err errMsg ->
-                        Expect.fail errMsg
+                        Ok pitch ->
+                            Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", pitch = pitch, volume = 40 })))
 
+                        Err errMsg ->
+                            Expect.fail errMsg
             ]
         ]
-
