@@ -10,11 +10,6 @@ defmodule MusicJamServerWeb.RoomChannel do
   end
 
   def handle_in("update_instrument", payload, socket) do
-    registered_value = Registry.lookup(Registry.PubSub, "room:lobby")
-    for item <- registered_value do
-      {pid, _} = item
-      send(pid, {"update_instrument", payload})
-    end
     broadcast!(socket, "update_instrument", payload)
     {:noreply, socket}
   end

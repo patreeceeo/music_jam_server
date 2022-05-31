@@ -12,15 +12,4 @@ defmodule MusicJamServerWeb.PageLive do
       playing_voice_ids: assigns[:playing_voice_ids] }
     )
   end
-
-  # handle messages from channel
-  def handle_info({"update_instrument", %{ "voice_id" => voice_id, "volume" => volume, "pitch" => _pitch, "sliding" => _sliding }}, socket) when volume > 0 do
-    map = socket.assigns[:playing_voice_ids]
-    {:noreply, assign(socket, playing_voice_ids: MapSet.put(map, voice_id))}
-  end
-
-  def handle_info({"update_instrument", %{ "voice_id" => voice_id, "volume" => volume, "pitch" => _pitch, "sliding" => _sliding }}, socket) when volume === 0 do
-    map = socket.assigns[:playing_voice_ids]
-    {:noreply, assign(socket, playing_voice_ids: MapSet.delete(map, voice_id))}
-  end
 end
