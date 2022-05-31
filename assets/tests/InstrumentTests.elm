@@ -2,7 +2,7 @@ module InstrumentTests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, getPitchFromOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update)
+import Instrument exposing (PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, pitchAtOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update, fretDistance, fretIndex)
 import Json.Encode as Encode
 import Test exposing (..)
 import Test.Html.Event as Event
@@ -14,10 +14,15 @@ type Msg
     = InstrumentMsg Instrument.Msg
 
 
+-- TODO make tests more focused
 suite : Test
 suite =
     describe "Instrument module"
-        [ test "setCurrentPitch" <|
+        [
+          test "fretDistance / fretIndex" <|
+            \_ ->
+              Expect.equal (fretIndex (fretDistance 13)) 13
+          , test "setCurrentPitch" <|
             \_ ->
                 let
                     voice1 =
@@ -49,7 +54,7 @@ suite =
                         createInstrument [ voice1 ]
 
                     getPitchResult =
-                        getPitchFromOffset 500 1000 instrument 1
+                        pitchAtOffset 500 1000 instrument 0
                 in
                 case getPitchResult of
                     Ok pitch ->
@@ -96,13 +101,13 @@ suite =
                     -- TODO this test needs to be broken up?
                     let
                         voice1 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         voice2 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         voice3 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
@@ -114,7 +119,7 @@ suite =
                             update (mouseOverVoice 1 1000 mouseEvent) instrument
 
                         getPitchResult =
-                            getPitchFromOffset 500 1000 instrument 1
+                            pitchAtOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
                         Ok pitch ->
@@ -126,13 +131,13 @@ suite =
                 \_ ->
                     let
                         voice1 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         voice2 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         voice3 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            createInstrumentVoice (List.map toFloat (List.range 0 24))
 
                         instrument =
                             createInstrument [ voice1, voice2, voice3 ]
@@ -144,7 +149,7 @@ suite =
                             update (mouseOverVoice 1 1000 mouseEvent) instrument
 
                         getPitchResult =
-                            getPitchFromOffset 500 1000 instrument 1
+                            pitchAtOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
                         Ok pitch ->
