@@ -1,4 +1,4 @@
-port module Instrument exposing (Model, Msg, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, pitchAtOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update, view, fretDistance, fretIndex)
+port module Instrument exposing (Model, Msg, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, view)
 
 -- IN-HOUSE MODULES
 -- STDLIB MODULES
@@ -113,7 +113,7 @@ getCurrentPitch instrument voiceIndex default =
             voice.currentPitch
 
         Nothing ->
-            Debug.log "returning default" default
+            default
 
 
 
@@ -226,20 +226,24 @@ fretCount : Int
 fretCount =
     24
 
+
 k : Float
 k =
     5.71584144995393e-2
+
 
 fretDistance : Int -> Float
 fretDistance index =
     instW * 1.3 * (1 - (e ^ (-k * toFloat index)))
 
+
 fretIndex : Float -> Int
 fretIndex distance =
-  let
-      antiLog = -1 * (distance - (instW * 1.3)) / (instW * 1.3)
-  in
-  floor(-1 * ( logBase e antiLog ) / k)
+    let
+        antiLog =
+            -1 * (distance - (instW * 1.3)) / (instW * 1.3)
+    in
+    floor (-1 * logBase e antiLog / k)
 
 
 
@@ -501,9 +505,17 @@ viewDebugNotes model =
     List.concatMap viewDebugVoiceNotes (Array.toIndexedList model.voices)
 
 
+viewDebugPlayingNotes : Model -> String
+viewDebugPlayingNotes model =
+    String.join " "
+        (List.map (\voice -> String.fromFloat voice.currentPitch)
+            (Array.toList model.voices)
+        )
+
+
 viewDebugging : Model -> List (Svg.Svg Msg)
 viewDebugging model =
-    viewDebugNotes model ++ [ Svg.text_ [ y "215" ] [ Svg.text ("current pitch: " ++ String.fromFloat (getCurrentPitch model 1 0.0)) ] ]
+    viewDebugNotes model ++ [ Svg.text_ [ y "215" ] [ Svg.text ("playing notes " ++ viewDebugPlayingNotes model) ] ]
 
 
 view : Model -> Int -> Int -> Html.Html Msg
