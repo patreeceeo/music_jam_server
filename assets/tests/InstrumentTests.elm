@@ -2,7 +2,7 @@ module InstrumentTests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, pitchAtOffset, mouseOverVoice, sendPortMessage, setCurrentPitch, update, fretDistance, fretIndex)
+import Instrument exposing (PathSegment, PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, viewStringAnimationValues)
 import Json.Encode as Encode
 import Test exposing (..)
 import Test.Html.Event as Event
@@ -10,19 +10,17 @@ import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 
 
-type Msg
-    = InstrumentMsg Instrument.Msg
-
 
 -- TODO make tests more focused
+
+
 suite : Test
 suite =
     describe "Instrument module"
-        [
-          test "fretDistance / fretIndex" <|
+        [ test "fretDistance / fretIndex" <|
             \_ ->
-              Expect.equal (fretIndex (fretDistance 13)) 13
-          , test "setCurrentPitch" <|
+                Expect.equal (fretIndex (fretDistance 13)) 13
+        , test "setCurrentPitch" <|
             \_ ->
                 let
                     voice1 =
@@ -158,4 +156,57 @@ suite =
                         Err errMsg ->
                             Expect.fail errMsg
             ]
+        , test "viewStringAnimationValues" <|
+            \_ ->
+                let
+                    activeFretX =
+                        5
+
+                    stringY =
+                        13
+
+                    instW =
+                        16
+
+                    period =
+                        4
+
+                    amplitude =
+                        4
+
+                    actual =
+                        viewStringAnimationValues activeFretX stringY instW period amplitude
+
+                    expected : List (List PathSegment)
+                    expected =
+                        [ [ PathSegment "M" [ [ 0, 13 ], [ 5, 13 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          ]
+                        , [ PathSegment "M" [ [ 0, 13 ], [ 5, 13 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, -2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          ]
+                        , [ PathSegment "M" [ [ 0, 13 ], [ 5, 13 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, -2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, -2 ], [ 4, 0 ] ]
+                          , PathSegment "q" [ [ 2, 2 ], [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          , PathSegment "t" [ [ 4, 0 ] ]
+                          ]
+                        ]
+                in
+                Expect.equal expected actual
         ]

@@ -1,7 +1,4 @@
-port module Instrument exposing (Model, Msg, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, view)
-
--- IN-HOUSE MODULES
--- STDLIB MODULES
+port module Instrument exposing (Model, Msg, PathSegment, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, view, viewStringAnimationDurationMS, viewStringAnimationValues)
 
 import Array exposing (Array)
 import Html
@@ -14,6 +11,7 @@ import Utils exposing (joinNums, joinPoints)
 
 
 
+-- TODO use Float unless it really has to be an Int? Or vice versa?
 -- PORTS
 
 
@@ -104,17 +102,6 @@ setCurrentPitch instrument voiceIndex pitch =
 
         Nothing ->
             instrument
-
-
-getCurrentPitch : Model -> Int -> Float -> Float
-getCurrentPitch instrument voiceIndex default =
-    case Array.get voiceIndex instrument.voices of
-        Just voice ->
-            voice.currentPitch
-
-        Nothing ->
-            default
-
 
 
 -- DECODE JSON
@@ -354,8 +341,8 @@ svgDefs =
                 ]
                 []
             , Svg.feOffset
-                [ dx "8"
-                , dy "8"
+                [ dx "4"
+                , dy "4"
                 , result "offsetblur"
                 ]
                 []
@@ -380,8 +367,8 @@ svgDefs =
                 ]
                 []
             , Svg.feOffset
-                [ dx "4"
-                , dy "4"
+                [ dx "2"
+                , dy "2"
                 , result "offsetblur"
                 ]
                 []
@@ -447,39 +434,136 @@ decodeMouseEvent =
         (D.field "buttons" D.int)
 
 
-stringIndexes : List Int
-stringIndexes =
-    List.range 0 5
-
-
 stringY : Int -> Float
 stringY index =
     toFloat ((index + 1) * 28)
 
 
-stringPath : Int -> String
-stringPath index =
-    "M" ++ joinNums " " [ 0, stringY index, instW, stringY index ]
+activeFretX : Voice -> Float
+activeFretX voice =
+    case Array.get 0 voice.notes of
+        Just firstNote ->
+          if voice.currentPitch > 0 then
+            fretDistance (floor (voice.currentPitch - firstNote))
+          else
+            instW
+
+        Nothing ->
+          instW
 
 
-viewString : Int -> Int -> Svg.Svg Msg
-viewString index screenWidth =
+type alias PathSegment =
+    { command : String
+    , points : List (List Float)
+    }
+
+
+joinAnimationValues : List (List PathSegment) -> String
+joinAnimationValues values =
+  String.join ";" (List.map (\segments -> joinPathSegments segments) values)
+
+
+joinPathSegments : List PathSegment -> String
+joinPathSegments segments =
+    String.join " " (List.map (\seg -> seg.command ++ joinPoints seg.points) segments)
+
+
+viewStringAnimationValuesTail : Float -> Float -> Float -> List PathSegment
+viewStringAnimationValuesTail activeFretX_ instW_ period =
+    let
+        segmentCount =
+            ceiling ((instW_ - activeFretX_) / period) - 1
+
+        segmentIndexes =
+            List.range 0 (segmentCount - 1)
+    in
+    List.map (\_ -> PathSegment "t" [ [ period, 0 ] ]) segmentIndexes
+
+
+viewStringAnimationValues : Float -> Float -> Float -> Float -> Float -> List (List PathSegment)
+viewStringAnimationValues activeFretX_ stringY_ instW_ period amplitude =
+    [ [ PathSegment "M" [ [ 0, stringY_ ], [ activeFretX_, stringY_ ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      ]
+        ++ viewStringAnimationValuesTail activeFretX_ instW_ period
+    , [ PathSegment "M" [ [ 0, stringY_ ], [ activeFretX_, stringY_ ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ 0, 0 ], [ 0, 0 ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      ]
+        ++ viewStringAnimationValuesTail activeFretX_ instW_ period
+    , [ PathSegment "M" [ [ 0, stringY_ ], [ activeFretX_, stringY_ ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
+      , PathSegment "q" [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+      ]
+        ++ viewStringAnimationValuesTail activeFretX_ instW_ period
+    ]
+
+
+
+-- , String.join " "
+--     ([ "M"
+--      , joinPoints [ [ 0, stringY_ ], [ activeFretX_, stringY_ ] ]
+--      , "q"
+--      , joinPoints [ [ period / 2, (amplitude / 2) ], [ period, 0 ] ]
+--      , "q"
+--      , joinPoints [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
+--      , "q"
+--      , joinPoints [ [ period / 2, (amplitude / 2) ], [ period, 0 ] ]
+--      , "q"
+--      , joinPoints [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
+--      , "q"
+--      , joinPoints [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
+--      ]
+--         ++ viewStringAnimationValuesTail activeFretX_ instW_ period
+--     )
+-- ]
+
+
+viewStringAnimationDurationMS : Float -> Float
+viewStringAnimationDurationMS pitch =
+    2000
+
+
+viewStringAnimation : Voice -> Int -> Svg.Svg Msg
+viewStringAnimation voice index =
+    let
+        values_ =
+            viewStringAnimationValues (activeFretX voice) (stringY index) instW 20 20
+
+        dur_ =
+            viewStringAnimationDurationMS voice.currentPitch
+    in
+    Svg.animate [ attributeName "d", values (joinAnimationValues values_), dur (String.fromFloat dur_ ++ "ms"), repeatCount "indefinite" ] []
+
+
+viewString : Voice -> Int -> Int -> Int -> Svg.Svg Msg
+viewString voice index time screenWidth =
     Svg.path
-        [ d (stringPath index)
-        , cursor "crosshair"
+        [ cursor "crosshair"
         , strokeWidth "2"
         , stroke "rgba(255, 255, 255, 0.5)"
+        , fill "none"
         , onMouseOver (MouseOverVoice index screenWidth)
         , id ("instrument-voice-" ++ String.fromInt index)
         ]
-        []
+        [ viewStringAnimation voice index ]
 
 
-viewStrings : Int -> List (Svg.Svg Msg)
-viewStrings screenWidth =
-    List.map
-        (\index -> viewString index screenWidth)
-        stringIndexes
+viewStrings : Model -> Int -> Int -> List (Svg.Svg Msg)
+viewStrings model time screenWidth =
+    List.indexedMap
+        (\index voice -> viewString voice index time screenWidth)
+        (Array.toList model.voices)
 
 
 viewDebugVoiceNote : Int -> ( Int, Float ) -> Svg.Svg Msg
@@ -530,6 +614,6 @@ view model time screenWidth =
          , frets
          ]
             ++ viewInlays
-            ++ viewStrings screenWidth
+            ++ viewStrings model time screenWidth
             ++ viewDebugging model
         )
