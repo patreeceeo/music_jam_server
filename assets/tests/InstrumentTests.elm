@@ -14,12 +14,26 @@ import Test.Html.Selector as Selector
 -- TODO make tests more focused
 
 
+fretIndexes : List Int
+fretIndexes =
+    List.range 0 24
+
+
+fretPlacementTests : List Test
+fretPlacementTests =
+    List.map
+        (\index ->
+            test ("for " ++ String.fromInt index) <|
+                \_ ->
+                    Expect.equal (fretIndex (fretDistance index)) index
+        )
+        fretIndexes
+
+
 suite : Test
 suite =
     describe "Instrument module"
-        [ test "fretDistance / fretIndex" <|
-            \_ ->
-                Expect.equal (fretIndex (fretDistance 13)) 13
+        [ describe "fret placement" fretPlacementTests
         , test "setCurrentPitch" <|
             \_ ->
                 let

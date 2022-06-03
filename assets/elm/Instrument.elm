@@ -230,7 +230,7 @@ fretIndex distance =
         antiLog =
             -1 * (distance - (instW * 1.3)) / (instW * 1.3)
     in
-    floor (-1 * logBase e antiLog / k)
+    round (-1 * logBase e antiLog / k)
 
 
 
@@ -507,26 +507,6 @@ viewStringAnimationValues activeFretX_ stringY_ instW_ period amplitude =
       ]
         ++ viewStringAnimationValuesTail activeFretX_ instW_ period
     ]
-
-
-
--- , String.join " "
---     ([ "M"
---      , joinPoints [ [ 0, stringY_ ], [ activeFretX_, stringY_ ] ]
---      , "q"
---      , joinPoints [ [ period / 2, (amplitude / 2) ], [ period, 0 ] ]
---      , "q"
---      , joinPoints [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
---      , "q"
---      , joinPoints [ [ period / 2, (amplitude / 2) ], [ period, 0 ] ]
---      , "q"
---      , joinPoints [ [ period / 2, -(amplitude / 2) ], [ period, 0 ] ]
---      , "q"
---      , joinPoints [ [ period / 2, amplitude / 2 ], [ period, 0 ] ]
---      ]
---         ++ viewStringAnimationValuesTail activeFretX_ instW_ period
---     )
--- ]
 
 
 viewStringAnimationDurationMS : Float -> Float
