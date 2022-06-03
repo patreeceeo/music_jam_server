@@ -73,7 +73,7 @@ win.init = (elmApp) => {
     elmApp.ports.sendPortMessage.subscribe((msg) => {
       switch(msg.type) {
         case "playSound":
-          playNote(gainBass, sf2_guitar, msg.data.pitch, 5);
+          pushUpdate(msg.data)
           break;
         case "logError":
           console.error(msg.data.message)
@@ -103,9 +103,7 @@ win.init = (elmApp) => {
     socket.connect()
 
     function pushUpdate(event) {
-      const pitch = parseInt(event.target.dataset.pitch);
-      const voice_id = parseInt(event.target.dataset.voiceId);
-      channel.push("update_instrument", {voice_id: voice_id, pitch, volume: 1, sliding: false})
+      channel.push("update_instrument", event)
     }
 
     function downListener(event) {
