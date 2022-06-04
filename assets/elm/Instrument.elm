@@ -230,7 +230,7 @@ fretIndex distance =
         antiLog =
             -1 * (distance - (instW * 1.3)) / (instW * 1.3)
     in
-    round (-1 * logBase e antiLog / k)
+    ceiling ((-1 * logBase e antiLog / k) - 1)
 
 
 

@@ -25,7 +25,7 @@ fretPlacementTests =
         (\index ->
             test ("for " ++ String.fromInt index) <|
                 \_ ->
-                    Expect.equal (fretIndex (fretDistance index)) index
+                    Expect.equal (fretIndex ((fretDistance index) + 0.00001)) index
         )
         fretIndexes
 

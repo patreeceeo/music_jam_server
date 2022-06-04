@@ -1,14 +1,12 @@
 module Main exposing (main)
 
 -- IN-HOUSE MODULES
-
-import Instrument exposing (createInstrument, createInstrumentVoice)
-
 -- STDLIB MODULES
 
 import Browser
 import Browser.Events
 import Html
+import Instrument exposing (createInstrument, createInstrumentVoice)
 import Json.Decode as D
 import Time
 
@@ -241,6 +239,7 @@ decodeFlags =
 type Msg
     = AnimationFrame Time.Posix
     | InstrumentMsg Instrument.Msg
+    | WindowResize Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -262,6 +261,11 @@ update msg model =
                     in
                     ( { model | instrument = Just updatedInstrument }, Cmd.map InstrumentMsg instrumentCmd )
 
+                WindowResize width ->
+                    ( { model | screenWidth = width }
+                    , Cmd.none
+                    )
+
         Nothing ->
             ( model, Cmd.none )
 
@@ -272,7 +276,10 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onAnimationFrame AnimationFrame
+    Sub.batch
+        [ Browser.Events.onAnimationFrame AnimationFrame
+        , Browser.Events.onResize (\w _ -> WindowResize w)
+        ]
 
 
 
