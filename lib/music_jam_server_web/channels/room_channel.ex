@@ -10,7 +10,7 @@ defmodule MusicJamServerWeb.RoomChannel do
   end
 
   def handle_in("update_instrument", payload, socket) do
-    broadcast!(socket, "update_instrument", payload)
+    broadcast_from!(socket, "update_instrument", payload)
     {:noreply, socket}
   end
 
