@@ -1,4 +1,4 @@
-module InstrumentTests exposing (..)
+module Tests exposing (..)
 
 import Array
 import Expect
