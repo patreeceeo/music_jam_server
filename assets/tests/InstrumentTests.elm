@@ -2,12 +2,14 @@ module InstrumentTests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (PathSegment, PortMessage(..), createInstrument, createInstrumentVoice, createMouseEvent, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, viewStringAnimationValues)
+import Instrument exposing (createInstrument, createInstrumentVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
 import Json.Encode as Encode
+import Main exposing (Model, PortMessage(..), createMouseEvent, encodePortMessage, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
 import Test exposing (..)
 import Test.Html.Event as Event
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
+import Utils exposing (PathSegment)
 
 
 
@@ -25,9 +27,17 @@ fretPlacementTests =
         (\index ->
             test ("for " ++ String.fromInt index) <|
                 \_ ->
-                    Expect.equal (fretIndex ((fretDistance index) + 0.00001)) index
+                    Expect.equal (fretIndex (fretDistance index + 0.00001)) index
         )
         fretIndexes
+
+
+wrapInstrument : Instrument.Model -> Model
+wrapInstrument instrument =
+    { instrument = Just instrument
+    , screenWidth = 1000
+    , timeInMillis = 0
+    }
 
 
 suite : Test
@@ -101,9 +111,9 @@ suite =
                             createMouseEvent 500 0 1
 
                         mouseOverVoiceMsg =
-                            mouseOverVoice 1 1000 mouseEvent
+                            mouseOverVoice 1 1000 0 mouseEvent
                     in
-                    Instrument.view instrument 0 1000
+                    view (wrapInstrument instrument)
                         |> Query.fromHtml
                         |> Query.find [ Selector.id "instrument-voice-1" ]
                         |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
@@ -127,15 +137,15 @@ suite =
                         mouseEvent =
                             createMouseEvent 500 0 1
 
-                        ( updatedInstrument, _ ) =
-                            update (mouseOverVoice 1 1000 mouseEvent) instrument
+                        ( updatedModel, _ ) =
+                            update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
                         Ok pitch ->
-                            Expect.equal (setCurrentPitch instrument 1 pitch) updatedInstrument
+                            Expect.equal (Just (setCurrentPitch instrument 1 pitch)) updatedModel.instrument
 
                         Err errMsg ->
                             Expect.fail errMsg
@@ -158,14 +168,14 @@ suite =
                             createMouseEvent 500 0 1
 
                         ( _, playSoundCmd ) =
-                            update (mouseOverVoice 1 1000 mouseEvent) instrument
+                            update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
                         Ok pitch ->
-                            Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", pitch = pitch, volume = 40 })))
+                            Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = 1, pitch = pitch, volume = 40 })))
 
                         Err errMsg ->
                             Expect.fail errMsg

@@ -12,6 +12,7 @@ defmodule MusicJamServer.Insts.Fretboard do
     ], fn notes -> %{
       currentPitch: 0,
       currentVolume: 0,
+      lastNoteStartTime: 0,
       notes: notes
     } end)
   end
