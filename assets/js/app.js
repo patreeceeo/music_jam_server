@@ -97,7 +97,7 @@ win.init = (elmApp) => {
     socket.connect()
 
     function pushUpdate(event) {
-      channel.push("update_instrument", event)
+      channel.push("playSound", event)
     }
 
     function downListener(event) {
@@ -109,7 +109,7 @@ win.init = (elmApp) => {
       }
     }
     const voiceInfo = {};
-    channel.on("update_instrument", (event) => {
+    channel.on("playSound", (event) => {
       if(event.volume > 0) {
         playGuiar(event.pitch)
         elmApp.ports.receivePortMessage.send({

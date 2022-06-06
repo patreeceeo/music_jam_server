@@ -9,8 +9,8 @@ defmodule MusicJamServerWeb.RoomChannel do
     {:error, %{reason: "unauthorized"}}
   end
 
-  def handle_in("update_instrument", payload, socket) do
-    broadcast_from!(socket, "update_instrument", payload)
+  def handle_in("playSound", payload, socket) do
+    broadcast_from!(socket, "playSound", payload)
     {:noreply, socket}
   end
 
