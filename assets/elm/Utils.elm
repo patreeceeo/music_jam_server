@@ -1,4 +1,4 @@
-module Utils exposing (joinNums, joinPoints)
+module Utils exposing (joinNums, joinPoints, flip3)
 
 
 joinNums : String -> List Float -> String
@@ -15,4 +15,6 @@ joinPoints : List (List Float) -> String
 joinPoints points =
     String.join " " (List.map joinPoint points)
 
-
+flip3 : (a -> b -> c -> retval) -> c -> b -> a -> retval
+flip3 function a b c =
+    function c b a

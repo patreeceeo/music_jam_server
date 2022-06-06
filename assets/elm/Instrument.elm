@@ -1,4 +1,4 @@
-port module Instrument exposing (Model, Msg, PathSegment, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, update, view, viewStringAnimationDurationMS, viewStringAnimationValues)
+port module Instrument exposing (Model, Msg, PathSegment, PortMessage(..), Voice, createInstrument, createInstrumentVoice, createMouseEvent, decodeInstrument, encodePortMessage, fretDistance, fretIndex, mouseOverVoice, pitchAtOffset, sendPortMessage, setCurrentPitch, subscriptionBatch, update, view, viewStringAnimationDurationMS, viewStringAnimationValues)
 
 import Array exposing (Array)
 import Html
@@ -7,7 +7,7 @@ import Json.Encode as E
 import Svg
 import Svg.Attributes exposing (..)
 import Svg.Events
-import Utils exposing (joinNums, joinPoints)
+import Utils exposing (joinNums, joinPoints, flip3)
 
 
 
@@ -15,12 +15,21 @@ import Utils exposing (joinNums, joinPoints)
 -- PORTS
 
 
+type alias PlaySoundWrapper =
+    { type_ : String, data : PlaySoundData }
+
+
+type alias PlaySoundData =
+    { soundId : String, voiceIndex : Int, pitch : Float, volume : Float }
+
+
 type PortMessage
-    = PlaySound { soundId : String, pitch : Float, volume : Float }
+    = PlaySound PlaySoundData
     | LogError String
 
 
 port sendPortMessage : E.Value -> Cmd msg
+port receivePortMessage : (E.Value -> msg) -> Sub msg
 
 
 encodePortMessage : PortMessage -> E.Value
@@ -32,6 +41,7 @@ encodePortMessage msg =
                 , ( "data"
                   , E.object
                         [ ( "soundId", E.string data.soundId )
+                        , ( "voiceIndex", E.int data.voiceIndex )
                         , ( "pitch", E.float data.pitch )
                         , ( "volume", E.float data.volume )
                         ]
@@ -48,6 +58,38 @@ encodePortMessage msg =
                 ]
 
 
+decodePortMessage : D.Decoder PlaySoundWrapper
+decodePortMessage =
+    D.at [ "type" ] D.string
+        |> D.andThen decodePortMessageData
+
+
+decodePortMessageData : String -> D.Decoder PlaySoundWrapper
+decodePortMessageData type_ =
+    case type_ of
+        "playSound" ->
+            decodePlaySoundMessage
+
+        _ ->
+            D.fail ("unhandled message type " ++ type_)
+
+
+decodePlaySoundMessage : D.Decoder PlaySoundWrapper
+decodePlaySoundMessage =
+    D.map2 PlaySoundWrapper
+        (D.field "type" D.string)
+        (D.field "data" decodePlaySoundMessageData)
+
+
+decodePlaySoundMessageData : D.Decoder PlaySoundData
+decodePlaySoundMessageData =
+    D.map4 PlaySoundData
+        (D.field "soundId" D.string)
+        (D.field "voiceIndex" D.int)
+        (D.field "pitch" D.float)
+        (D.field "volume" D.float)
+
+
 
 -- MODEL
 
@@ -55,6 +97,7 @@ encodePortMessage msg =
 type alias Voice =
     { currentPitch : Float
     , currentVolume : Float
+    , lastNoteStartTime : Int
     , notes : Array Float
     }
 
@@ -74,6 +117,7 @@ createInstrumentVoice : List Float -> Voice
 createInstrumentVoice notes =
     { currentPitch = 0
     , currentVolume = 0
+    , lastNoteStartTime = 0
     , notes = Array.fromList notes
     }
 
@@ -91,6 +135,10 @@ asCurrentPitchIn : Voice -> Float -> Voice
 asCurrentPitchIn voice pitch =
     { voice | currentPitch = pitch }
 
+asLastNoteStartTimeIn : Voice -> Int -> Voice
+asLastNoteStartTimeIn voice when =
+    { voice | lastNoteStartTime = when }
+
 
 setCurrentPitch : Model -> Int -> Float -> Model
 setCurrentPitch instrument voiceIndex pitch =
@@ -103,6 +151,21 @@ setCurrentPitch instrument voiceIndex pitch =
         Nothing ->
             instrument
 
+setLastNoteStartTime : Model -> Int -> Int -> Model
+setLastNoteStartTime instrument voiceIndex when =
+  case Array.get voiceIndex instrument.voices of
+    Just voice ->
+      when
+        |> asLastNoteStartTimeIn voice
+        |> asVoiceIn voiceIndex instrument
+    Nothing ->
+      instrument
+
+playNote : Model -> Int -> Float -> Float -> Int -> Model
+playNote instrument voiceIndex pitch volume when =
+  instrument
+    |> ((flip3 setCurrentPitch) pitch voiceIndex)
+    |> ((flip3 setLastNoteStartTime) when voiceIndex)
 
 -- DECODE JSON
 
@@ -116,9 +179,10 @@ decodeInstrument =
 decodeInstrumentVoices : D.Decoder (Array Voice)
 decodeInstrumentVoices =
     D.array
-        (D.map3 Voice
+        (D.map4 Voice
             (D.field "currentPitch" D.float)
             (D.field "currentVolume" D.float)
+            (D.field "lastNoteStartTime" D.int)
             (D.field "notes" (D.array D.float))
         )
 
@@ -128,12 +192,13 @@ decodeInstrumentVoices =
 
 
 type Msg
-    = MouseOverVoice Int Int MouseEvent
+    = MouseOverVoice Int Int Int MouseEvent
+    | ReceivePortMessage E.Value
 
 
-mouseOverVoice : Int -> Int -> MouseEvent -> Msg
-mouseOverVoice index screenWidth event =
-    MouseOverVoice index screenWidth event
+mouseOverVoice : Int -> Int -> Int -> MouseEvent -> Msg
+mouseOverVoice index screenWidth when event =
+    MouseOverVoice index screenWidth when event
 
 
 pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float
@@ -143,7 +208,7 @@ pitchAtOffset offset screenWidth instrument voiceIndex =
             (toFloat offset / toFloat screenWidth) * instW
 
         noteIndex =
-            fretIndex unscaledOffset
+            fretIndex (Debug.log "unscaledOffset" unscaledOffset)
     in
     case Array.get voiceIndex instrument.voices of
         Just voice ->
@@ -152,7 +217,7 @@ pitchAtOffset offset screenWidth instrument voiceIndex =
                     Ok note
 
                 Nothing ->
-                    Err ("OutOfRangeErr: no note corresponding to offset " ++ String.fromInt offset ++ " on voice index " ++ String.fromInt voiceIndex)
+                    Err ("OutOfRangeErr: no note corresponding to offset " ++ String.fromInt offset ++ " (note index: " ++ String.fromInt noteIndex ++ " on voice index " ++ String.fromInt voiceIndex)
 
         Nothing ->
             Err ("OutOfRangeErr: no voice corresponding to index " ++ String.fromInt voiceIndex)
@@ -161,7 +226,7 @@ pitchAtOffset offset screenWidth instrument voiceIndex =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MouseOverVoice index screenWidth event ->
+        MouseOverVoice index screenWidth when event ->
             if event.buttons > 0 then
                 let
                     pitchResult =
@@ -169,8 +234,8 @@ update msg model =
                 in
                 case pitchResult of
                     Ok pitch ->
-                        ( setCurrentPitch model (Debug.log "setting voice index " index) (Debug.log "to pitch " pitch)
-                        , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", pitch = pitch, volume = 40 }))
+                        ( playNote model index pitch 40 when
+                        , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = 40 }))
                         )
 
                     Err errMsg ->
@@ -178,6 +243,27 @@ update msg model =
 
             else
                 ( model, Cmd.none )
+
+        ReceivePortMessage msgJson ->
+            case D.decodeValue decodePortMessage msgJson of
+                Ok playSound ->
+                    ( setCurrentPitch model playSound.data.voiceIndex playSound.data.pitch
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( model
+                    , sendPortMessage (encodePortMessage (LogError (D.errorToString error)))
+                    )
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptionBatch : List (Sub Msg)
+subscriptionBatch =
+    [ receivePortMessage ReceivePortMessage ]
 
 
 
@@ -443,13 +529,14 @@ activeFretX : Voice -> Float
 activeFretX voice =
     case Array.get 0 voice.notes of
         Just firstNote ->
-          if voice.currentPitch > 0 then
-            fretDistance (floor (voice.currentPitch - firstNote))
-          else
-            instW
+            if voice.currentPitch > 0 then
+                fretDistance (floor (voice.currentPitch - firstNote))
+
+            else
+                instW
 
         Nothing ->
-          instW
+            instW
 
 
 type alias PathSegment =
@@ -460,7 +547,7 @@ type alias PathSegment =
 
 joinAnimationValues : List (List PathSegment) -> String
 joinAnimationValues values =
-  String.join ";" (List.map (\segments -> joinPathSegments segments) values)
+    String.join ";" (List.map (\segments -> joinPathSegments segments) values)
 
 
 joinPathSegments : List PathSegment -> String
@@ -511,14 +598,14 @@ viewStringAnimationValues activeFretX_ stringY_ instW_ period amplitude =
 
 viewStringAnimationDurationMS : Float -> Float
 viewStringAnimationDurationMS pitch =
-    2000
+    800
 
 
-viewStringAnimation : Voice -> Int -> Svg.Svg Msg
-viewStringAnimation voice index =
+viewStringAnimation : Voice -> Int -> Int -> Svg.Svg Msg
+viewStringAnimation voice index time =
     let
         values_ =
-            viewStringAnimationValues (activeFretX voice) (stringY index) instW 20 20
+            viewStringAnimationValues (activeFretX voice) (stringY index) instW (44000 / (voice.currentPitch * voice.currentPitch)) (sin(radians (pi * (200/toFloat (time - voice.lastNoteStartTime)))))
 
         dur_ =
             viewStringAnimationDurationMS voice.currentPitch
@@ -533,10 +620,10 @@ viewString voice index time screenWidth =
         , strokeWidth "2"
         , stroke "rgba(255, 255, 255, 0.5)"
         , fill "none"
-        , onMouseOver (MouseOverVoice index screenWidth)
+        , onMouseOver (MouseOverVoice index screenWidth time)
         , id ("instrument-voice-" ++ String.fromInt index)
         ]
-        [ viewStringAnimation voice index ]
+        [ viewStringAnimation voice index time ]
 
 
 viewStrings : Model -> Int -> Int -> List (Svg.Svg Msg)

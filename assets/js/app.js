@@ -5,6 +5,7 @@ import "../css/app.css"
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.
 import {channel} from "./user_socket.js"
+/// <reference path = " types.d.ts" />
 
 // You can include dependencies in two ways.
 //
@@ -49,14 +50,7 @@ const promises = [
   player.adjustPreset(audioContext, sf2_guitar)
 ]
 
-/** @typedef {{ type: "playSound", data: ElmMsgDataPlaySound } | { type: "logError", data: ElmMsgDataLogError }} ElmMsg */
-/** @typedef {{ pitch: number, soundId: string, volume: number }} ElmMsgDataPlaySound */
-/** @typedef {{ message: string }} ElmMsgDataLogError */
 
-/** @typedef {{ ports: { sendPortMessage: {
-  *                  subscribe: (callback: (msg: ElmMsg) => void) => void
-*            }}}} ElmApp
-*/
 
 /** @param {ElmApp} elmApp */
 win.init = (elmApp) => {
@@ -115,15 +109,14 @@ win.init = (elmApp) => {
       }
     }
     const voiceInfo = {};
-    channel.on("update_instrument", ({voice_id, volume, pitch, sliding}) => {
-      if(volume > 0) {
-        playGuiar(pitch)
+    channel.on("update_instrument", (event) => {
+      if(event.volume > 0) {
+        playGuiar(event.pitch)
+        elmApp.ports.receivePortMessage.send({
+          type: "playSound",
+          data: event
+        })
       }
-      voiceInfo[voice_id] ||= {}
-      clearTimeout(voiceInfo[voice_id].timeout)
-      voiceInfo[voice_id].timeout = setTimeout(() => {
-        channel.push("update_instrument", {voice_id, volume: 0, pitch, sliding})
-      }, 5000) // TODO get actual time from AHDSR
     })
   })
 };

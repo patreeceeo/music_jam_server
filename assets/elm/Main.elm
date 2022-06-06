@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 -- IN-HOUSE MODULES
 -- STDLIB MODULES
@@ -6,11 +6,14 @@ module Main exposing (main)
 import Browser
 import Browser.Events
 import Html
-import Instrument exposing (createInstrument, createInstrumentVoice)
+import Instrument exposing (createInstrument, createInstrumentVoice, subscriptionBatch, encodePortMessage, PortMessage(..))
 import Json.Decode as D
 import Time
+import Json.Encode as E
 
 
+port sendPortMessage : E.Value -> Cmd msg
+port receivePortMessage : (E.Value -> msg) -> Sub msg
 
 -- MAIN
 
@@ -23,7 +26,6 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
-
 
 
 -- MODEL
@@ -212,17 +214,20 @@ defaultInstrument =
 
 init : D.Value -> ( Model, Cmd Msg )
 init flags =
-    ( case D.decodeValue decodeFlags flags of
+    case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
-            { timeInMillis = 0
+            ({ timeInMillis = 0
             , screenWidth = decodedFlags.screenWidth
             , instrument = Just (.instrument decodedFlags)
-            }
+            },
+            Cmd.none
+            )
 
-        Err _ ->
-            { timeInMillis = 0, screenWidth = 0, instrument = Just defaultInstrument }
-    , Cmd.none
-    )
+        Err errMsg ->
+            ({ timeInMillis = 0, screenWidth = 0, instrument = Just defaultInstrument }
+            , sendPortMessage (encodePortMessage (LogError (D.errorToString errMsg)))
+            )
+    
 
 
 decodeFlags : D.Decoder Flags
@@ -277,9 +282,9 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ Browser.Events.onAnimationFrame AnimationFrame
+        ([ Browser.Events.onAnimationFrame AnimationFrame
         , Browser.Events.onResize (\w _ -> WindowResize w)
-        ]
+        ] ++ (List.map (\sub -> Sub.map InstrumentMsg sub) subscriptionBatch)) 
 
 
 
