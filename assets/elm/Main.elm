@@ -1,4 +1,4 @@
-port module Main exposing (Model, main, update, view, createMouseEvent, mouseOverVoice, encodePortMessage, sendPortMessage, viewStringAnimationValues, PortMessage(..))
+port module Main exposing (Model, main, update, view, mouseOverVoice, encodePortMessage, sendPortMessage, viewStringAnimationValues, PortMessage(..))
 
 import Array
 import Browser
@@ -12,6 +12,7 @@ import Svg.Attributes exposing (..)
 import Svg.Events
 import Time
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
+import MouseEvent
 
 
 
@@ -158,7 +159,7 @@ decodeFlags =
 type Msg
     = AnimationFrame Time.Posix
     | WindowResize Int
-    | MouseOverVoice Int Int Int MouseEvent
+    | MouseOverVoice Int Int Int MouseEvent.Model
     | ReceivePortMessage E.Value
 
 
@@ -213,7 +214,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-mouseOverVoice : Int -> Int -> Int -> MouseEvent -> Msg
+mouseOverVoice : Int -> Int -> Int -> MouseEvent.Model -> Msg
 mouseOverVoice index screenWidth when event =
     MouseOverVoice index screenWidth when event
 
@@ -588,34 +589,8 @@ viewDebugging model =
     viewDebugNotes model ++ [ Svg.text_ [ y "215" ] [ Svg.text ("playing notes " ++ viewDebugPlayingNotes model) ] ]
 
 
-
--- EVENTS
-
-
-type alias MouseEvent =
-    { offsetX : Int
-    , offsetY : Int
-    , buttons : Int
-    }
-
-
-createMouseEvent : Int -> Int -> Int -> MouseEvent
-createMouseEvent offsetX offsetY buttons =
-    { offsetX = offsetX
-    , offsetY = offsetY
-    , buttons = buttons
-    }
-
-
-onMouseOver : (MouseEvent -> msg) -> Svg.Attribute msg
+onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
-    Svg.Events.on "mouseover" (D.map event decodeMouseEvent)
+    Svg.Events.on "mouseover" (D.map event MouseEvent.decode)
 
 
-decodeMouseEvent : D.Decoder MouseEvent
-decodeMouseEvent =
-    D.map3
-        MouseEvent
-        (D.field "offsetX" D.int)
-        (D.field "offsetY" D.int)
-        (D.field "buttons" D.int)

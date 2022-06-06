@@ -4,12 +4,13 @@ import Array
 import Expect
 import Instrument exposing (createInstrument, createInstrumentVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
 import Json.Encode as Encode
-import Main exposing (Model, PortMessage(..), createMouseEvent, encodePortMessage, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
+import Main exposing (Model, PortMessage(..), encodePortMessage, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
 import Test exposing (..)
 import Test.Html.Event as Event
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 import Utils exposing (PathSegment)
+import MouseEvent
 
 
 
@@ -108,7 +109,7 @@ suite =
                                 ]
 
                         mouseEvent =
-                            createMouseEvent 500 0 1
+                            MouseEvent.create 500 0 1
 
                         mouseOverVoiceMsg =
                             mouseOverVoice 1 1000 0 mouseEvent
@@ -135,7 +136,7 @@ suite =
                             createInstrument [ voice1, voice2, voice3 ]
 
                         mouseEvent =
-                            createMouseEvent 500 0 1
+                            MouseEvent.create 500 0 1
 
                         ( updatedModel, _ ) =
                             update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
@@ -165,7 +166,7 @@ suite =
                             createInstrument [ voice1, voice2, voice3 ]
 
                         mouseEvent =
-                            createMouseEvent 500 0 1
+                            MouseEvent.create 500 0 1
 
                         ( _, playSoundCmd ) =
                             update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
