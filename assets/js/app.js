@@ -75,12 +75,12 @@ win.init = (elmApp) => {
       }
     })
 
-    function playNote(gain, preset, pitch, duration) {
-      player.playNote(audioContext, gain, preset, pitch, duration);
+    function playNote(gain, preset, pitch, duration, volume) {
+      player.playNote(audioContext, gain, preset, pitch, duration, volume);
     }
 
-    function playGuiar(pitch, duration) {
-      playNote(gainBass, sf2_guitar, pitch, duration);
+    function playGuiar(pitch, duration, volume) {
+      playNote(gainBass, sf2_guitar, pitch, duration, volume);
     }
 
     const playVoiceBtns = $("[data-role=play-voice]")
@@ -111,7 +111,7 @@ win.init = (elmApp) => {
     const voiceInfo = {};
     channel.on("playSound", (event) => {
       if(event.volume > 0) {
-        playGuiar(event.pitch)
+        playGuiar(event.pitch, 5, event.volume)
         elmApp.ports.receivePortMessage.send({
           type: "playSound",
           data: event

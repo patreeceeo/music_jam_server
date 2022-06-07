@@ -1,21 +1,23 @@
-port module Main exposing (Model, main, update, view, mouseOverVoice, encodePortMessage, sendPortMessage, viewStringAnimationValues, PortMessage(..))
+port module Main exposing (Model, PortMessage(..), encodePortMessage, main, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
 
 import Array
 import Browser
 import Browser.Events
 import Html
 import Html.Attributes
+import Html.Events
 import Instrument
 import Json.Decode as D
 import Json.Encode as E
+import KbdEvent
+import KbdState
+import MouseEvent
 import Svg
 import Svg.Attributes exposing (..)
 import Svg.Events
 import Time
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
-import MouseEvent
-import KbdEvent
-import Html.Events
+
 
 
 -- MAIN
@@ -117,6 +119,11 @@ decodePlaySoundMessageData =
 -- MODEL
 
 
+initKbdState : KbdState.Model
+initKbdState =
+    KbdState.init
+
+
 type alias Flags =
     { screenWidth : Int
     , instrument : Instrument.Model
@@ -126,6 +133,7 @@ type alias Flags =
 type alias Model =
     { timeInMillis : Int
     , screenWidth : Int
+    , kbdState : KbdState.Model
     , instrument : Maybe Instrument.Model
     }
 
@@ -135,6 +143,7 @@ init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
             ( { timeInMillis = 0
+              , kbdState = initKbdState
               , screenWidth = decodedFlags.screenWidth
               , instrument = Just (.instrument decodedFlags)
               }
@@ -142,7 +151,11 @@ init flags =
             )
 
         Err errMsg ->
-            ( { timeInMillis = 0, screenWidth = 0, instrument = Nothing }
+            ( { timeInMillis = 0
+              , kbdState = initKbdState
+              , screenWidth = 0
+              , instrument = Nothing
+              }
             , sendPortMessage (encodePortMessage (LogError (D.errorToString errMsg)))
             )
 
@@ -163,8 +176,8 @@ type Msg
     | WindowResize Int
     | MouseOverVoice Int MouseEvent.Model
     | KeyDown KbdEvent.Model
+    | KeyUp KbdEvent.Model
     | ReceivePortMessage E.Value
-
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -203,22 +216,38 @@ update msg model =
                         ( model, Cmd.none )
 
                 KeyDown event ->
-                    case (voiceIndexForKey event.key) of
-                      Just voiceIndex ->
-                        case (Array.get voiceIndex instrument.voices) of
-                          Just voice ->
-                            case (Array.get 0 voice.notes) of
-                              Just pitch ->
-                                ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch 40 model.timeInMillis) }
-                                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = 40 }))
-                                )
-                              Nothing ->
-                                ( model, Cmd.none)
-                          Nothing ->
-                                ( model, Cmd.none)
-                      Nothing ->
-                                ( model, Cmd.none)
+                      let
+                          newKeyState =
+                            case KbdState.get event.key model.kbdState of
+                                Just keyState ->
+                                    { keyState | lastPressedAt = model.timeInMillis }
+                                Nothing ->
+                                    { lastPressedAt = model.timeInMillis }
+                      in
+                      ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
+                      , Cmd.none
+                      )
 
+
+                KeyUp event ->
+                    case voiceIndexForKey event.key of
+                        Just voiceIndex ->
+                            case Array.get voiceIndex instrument.voices of
+                                Just voice ->
+                                    case Array.get 0 voice.notes of
+                                        Just pitch ->
+                                            ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch 40 model.timeInMillis) }
+                                            , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = (intensityOfKeyPress model event.key) }))
+                                            )
+
+                                        Nothing ->
+                                            ( model, Cmd.none )
+
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
                 ReceivePortMessage msgJson ->
                     case D.decodeValue decodePortMessage msgJson of
@@ -262,24 +291,25 @@ view : Model -> Html.Html Msg
 view model =
     case model.instrument of
         Just instrument ->
-            Html.div [
-                Html.Attributes.tabindex 0
+            Html.div
+                [ Html.Attributes.tabindex 0
                 , onKeyDown KeyDown
-              ] [
-              Svg.svg
-                  [ class "instrument"
-                  , preserveAspectRatio "xMidYMid meet"
-                  , viewBox viewBox_
-                  ]
-                  ([ svgDefs
-                   , outerPoly
-                   , frets
-                   ]
-                      ++ viewInlays
-                      ++ viewStrings model
-                      ++ viewDebugging instrument
-                  )
-                  ]
+                , onKeyUp KeyUp
+                ]
+                [ Svg.svg
+                    [ class "instrument"
+                    , preserveAspectRatio "xMidYMid meet"
+                    , viewBox viewBox_
+                    ]
+                    ([ svgDefs
+                     , outerPoly
+                     , frets
+                     ]
+                        ++ viewInlays
+                        ++ viewStrings model
+                        ++ viewDebugging instrument
+                    )
+                ]
 
         Nothing ->
             Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
@@ -620,17 +650,45 @@ onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
     Svg.Events.on "mouseover" (D.map event MouseEvent.decode)
 
+
 onKeyDown : (KbdEvent.Model -> msg) -> Svg.Attribute msg
 onKeyDown event =
     Html.Events.on "keydown" (D.map event KbdEvent.decode)
 
-voiceIndexForKey : KbdEvent.Key -> (Maybe Int)
+
+onKeyUp : (KbdEvent.Model -> msg) -> Svg.Attribute msg
+onKeyUp event =
+    Html.Events.on "keyup" (D.map event KbdEvent.decode)
+
+
+voiceIndexForKey : KbdEvent.Key -> Maybe Int
 voiceIndexForKey key =
-  case key of
-    KbdEvent.KeyS -> Just 0
-    KbdEvent.KeyD -> Just 1
-    KbdEvent.KeyF -> Just 2
-    KbdEvent.KeyJ -> Just 3
-    KbdEvent.KeyK -> Just 4
-    KbdEvent.KeyL -> Just 5
-    _ -> Nothing
+    case key of
+        KbdEvent.KeyS ->
+            Just 0
+
+        KbdEvent.KeyD ->
+            Just 1
+
+        KbdEvent.KeyF ->
+            Just 2
+
+        KbdEvent.KeyJ ->
+            Just 3
+
+        KbdEvent.KeyK ->
+            Just 4
+
+        KbdEvent.KeyL ->
+            Just 5
+
+        _ ->
+            Nothing
+
+intensityOfKeyPress : Model -> KbdEvent.Key -> Float
+intensityOfKeyPress model key =
+  case (KbdState.get key model.kbdState) of
+    Just keyState ->
+      Basics.min 100 ((toFloat (model.timeInMillis - keyState.lastPressedAt)) / 100)
+    Nothing ->
+      0
