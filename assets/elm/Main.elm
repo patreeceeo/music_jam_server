@@ -4,6 +4,7 @@ import Array
 import Browser
 import Browser.Events
 import Html
+import Html.Attributes
 import Instrument
 import Json.Decode as D
 import Json.Encode as E
@@ -13,7 +14,8 @@ import Svg.Events
 import Time
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
 import MouseEvent
-
+import KbdEvent
+import Html.Events
 
 
 -- MAIN
@@ -159,8 +161,10 @@ decodeFlags =
 type Msg
     = AnimationFrame Time.Posix
     | WindowResize Int
-    | MouseOverVoice Int Int Int MouseEvent.Model
+    | MouseOverVoice Int MouseEvent.Model
+    | KeyDown KbdEvent.Model
     | ReceivePortMessage E.Value
+
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -180,15 +184,15 @@ update msg model =
                     , Cmd.none
                     )
 
-                MouseOverVoice index screenWidth when event ->
+                MouseOverVoice index event ->
                     if event.buttons > 0 then
                         let
                             pitchResult =
-                                Instrument.pitchAtOffset event.offsetX screenWidth instrument index
+                                Instrument.pitchAtOffset event.offsetX model.screenWidth instrument index
                         in
                         case pitchResult of
                             Ok pitch ->
-                                ( { model | instrument = Just (Instrument.playNote instrument index pitch 40 when) }
+                                ( { model | instrument = Just (Instrument.playNote instrument index pitch 40 model.timeInMillis) }
                                 , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = 40 }))
                                 )
 
@@ -197,6 +201,24 @@ update msg model =
 
                     else
                         ( model, Cmd.none )
+
+                KeyDown event ->
+                    case (voiceIndexForKey event.key) of
+                      Just voiceIndex ->
+                        case (Array.get voiceIndex instrument.voices) of
+                          Just voice ->
+                            case (Array.get 0 voice.notes) of
+                              Just pitch ->
+                                ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch 40 model.timeInMillis) }
+                                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = 40 }))
+                                )
+                              Nothing ->
+                                ( model, Cmd.none)
+                          Nothing ->
+                                ( model, Cmd.none)
+                      Nothing ->
+                                ( model, Cmd.none)
+
 
                 ReceivePortMessage msgJson ->
                     case D.decodeValue decodePortMessage msgJson of
@@ -214,9 +236,9 @@ update msg model =
             ( model, Cmd.none )
 
 
-mouseOverVoice : Int -> Int -> Int -> MouseEvent.Model -> Msg
-mouseOverVoice index screenWidth when event =
-    MouseOverVoice index screenWidth when event
+mouseOverVoice : Int -> MouseEvent.Model -> Msg
+mouseOverVoice index event =
+    MouseOverVoice index event
 
 
 
@@ -240,19 +262,24 @@ view : Model -> Html.Html Msg
 view model =
     case model.instrument of
         Just instrument ->
-            Svg.svg
-                [ class "instrument"
-                , preserveAspectRatio "xMidYMid meet"
-                , viewBox viewBox_
-                ]
-                ([ svgDefs
-                 , outerPoly
-                 , frets
-                 ]
-                    ++ viewInlays
-                    ++ viewStrings model
-                    ++ viewDebugging instrument
-                )
+            Html.div [
+                Html.Attributes.tabindex 0
+                , onKeyDown KeyDown
+              ] [
+              Svg.svg
+                  [ class "instrument"
+                  , preserveAspectRatio "xMidYMid meet"
+                  , viewBox viewBox_
+                  ]
+                  ([ svgDefs
+                   , outerPoly
+                   , frets
+                   ]
+                      ++ viewInlays
+                      ++ viewStrings model
+                      ++ viewDebugging instrument
+                  )
+                  ]
 
         Nothing ->
             Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
@@ -528,14 +555,14 @@ viewStringAnimation voice index time =
     Svg.animate [ attributeName "d", values (joinAnimationValues values_), dur (String.fromInt stringAnimationDurationMS ++ "ms"), repeatCount "indefinite" ] []
 
 
-viewString : Instrument.Voice -> Int -> Int -> Int -> Svg.Svg Msg
-viewString voice index time screenWidth =
+viewString : Instrument.Voice -> Int -> Int -> Svg.Svg Msg
+viewString voice index time =
     Svg.path
         [ cursor "crosshair"
         , strokeWidth "2"
         , stroke "rgba(255, 255, 255, 0.5)"
         , fill "none"
-        , onMouseOver (MouseOverVoice index screenWidth time)
+        , onMouseOver (MouseOverVoice index)
         , id ("instrument-voice-" ++ String.fromInt index)
         ]
         [ viewStringAnimation voice index time ]
@@ -546,7 +573,7 @@ viewStrings model =
     case model.instrument of
         Just instrument ->
             List.indexedMap
-                (\index voice -> viewString voice index model.timeInMillis model.screenWidth)
+                (\index voice -> viewString voice index model.timeInMillis)
                 (Array.toList instrument.voices)
 
         Nothing ->
@@ -593,4 +620,17 @@ onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
     Svg.Events.on "mouseover" (D.map event MouseEvent.decode)
 
+onKeyDown : (KbdEvent.Model -> msg) -> Svg.Attribute msg
+onKeyDown event =
+    Html.Events.on "keydown" (D.map event KbdEvent.decode)
 
+voiceIndexForKey : KbdEvent.Key -> (Maybe Int)
+voiceIndexForKey key =
+  case key of
+    KbdEvent.KeyS -> Just 0
+    KbdEvent.KeyD -> Just 1
+    KbdEvent.KeyF -> Just 2
+    KbdEvent.KeyJ -> Just 3
+    KbdEvent.KeyK -> Just 4
+    KbdEvent.KeyL -> Just 5
+    _ -> Nothing
