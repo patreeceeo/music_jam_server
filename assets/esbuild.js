@@ -47,20 +47,22 @@ esbuild.build(opts).then((result) => {
 
 
 
-// Exit the process when standard input closes due to:
-//   https://hexdocs.pm/elixir/1.10.2/Port.html#module-zombie-operating-system-processes
-//
-process.stdin.on("end", function() {
+
+if(mode !== 'deploy') {
+  // Exit the process when standard input closes due to:
+  //   https://hexdocs.pm/elixir/1.10.2/Port.html#module-zombie-operating-system-processes
+  //
+  process.stdin.on("end", function() {
     console.log("standard input end");
     process.exit();
-});
+  });
 
-process.stdin.resume();
-
-// Set up chokidar to watch all elm files and rebuild the elm app ignoring process errors
-chokidar.watch("elm/**/*.elm", { ignored: "node_modules" }).on("all", (event, path) => {
+  process.stdin.resume();
+  // Set up chokidar to watch all elm files and rebuild the elm app ignoring process errors
+  chokidar.watch("elm/**/*.elm", { ignored: "node_modules" }).on("all", (event, path) => {
     console.log(event, path);
     try {
-        execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
+      execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
     } catch (error) {}
-});
+  });
+}
