@@ -4,7 +4,6 @@ import Array
 import Browser
 import Browser.Events
 import Html
-import Html.Attributes
 import Html.Events
 import Instrument
 import Json.Decode as D
@@ -328,6 +327,8 @@ subscriptions _ =
         [ Browser.Events.onAnimationFrame AnimationFrame
         , Browser.Events.onResize (\w _ -> WindowResize w)
         , Browser.Events.onVisibilityChange VisibilityChange
+        , Browser.Events.onKeyDown  (KbdEvent.decode |> D.map KeyDown)
+        , Browser.Events.onKeyUp (KbdEvent.decode |> D.map KeyUp)
         , receivePortMessage ReceivePortMessage
         ]
 
@@ -340,11 +341,7 @@ view : Model -> Html.Html Msg
 view model =
     case model.instrument of
         Just instrument ->
-            Html.div
-                [ Html.Attributes.tabindex 0
-                , onKeyDown KeyDown
-                , onKeyUp KeyUp
-                ]
+            Html.div []
                 [ Svg.svg
                     [ class "instrument"
                     , preserveAspectRatio "xMidYMid meet"
@@ -698,17 +695,6 @@ viewDebugging model =
 onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
     Svg.Events.on "mouseover" (D.map event MouseEvent.decode)
-
-
-onKeyDown : (KbdEvent.Model -> msg) -> Svg.Attribute msg
-onKeyDown event =
-    Html.Events.on "keydown" (D.map event KbdEvent.decode)
-
-
-onKeyUp : (KbdEvent.Model -> msg) -> Svg.Attribute msg
-onKeyUp event =
-    Html.Events.on "keyup" (D.map event KbdEvent.decode)
-
 
 voiceIndexForKey : KbdEvent.Key -> Maybe Int
 voiceIndexForKey key =
