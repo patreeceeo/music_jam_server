@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "preinstall": "cat package-lock.json",
+    "preinstall": "cat package-lock.json | grep lockfileVersion || cat package-lock.json | grep hasInstallScript",
     "build": "node esbuild.js",
     "deploy": "node esbuild.js --deploy",
     "watch": "node esbuild.js --watch"
