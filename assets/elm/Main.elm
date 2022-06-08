@@ -49,6 +49,7 @@ type alias PlaySoundData =
 type PortMessage
     = PlaySound PlaySoundData
     | LogError String
+    | AppStateChange Bool
 
 
 port sendPortMessage : E.Value -> Cmd msg
@@ -79,6 +80,15 @@ encodePortMessage msg =
                 , ( "data"
                   , E.object
                         [ ( "message", E.string errMsg ) ]
+                  )
+                ]
+
+        AppStateChange sleeping ->
+            E.object
+                [ ( "type", E.string "appStateChange" )
+                , ( "data"
+                  , E.object
+                        [ ( "sleeping", E.bool sleeping ) ]
                   )
                 ]
 
@@ -130,8 +140,14 @@ type alias Flags =
     }
 
 
+type AppState
+    = AppSleeping
+    | AppActive
+
+
 type alias Model =
-    { timeInMillis : Int
+    { appState : AppState
+    , timeInMillis : Int
     , screenWidth : Int
     , kbdState : KbdState.Model
     , instrument : Maybe Instrument.Model
@@ -142,7 +158,8 @@ init : D.Value -> ( Model, Cmd Msg )
 init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
-            ( { timeInMillis = 0
+            ( { appState = AppActive
+              , timeInMillis = 0
               , kbdState = initKbdState
               , screenWidth = decodedFlags.screenWidth
               , instrument = Just (.instrument decodedFlags)
@@ -151,7 +168,8 @@ init flags =
             )
 
         Err errMsg ->
-            ( { timeInMillis = 0
+            ( { appState = AppSleeping
+              , timeInMillis = 0
               , kbdState = initKbdState
               , screenWidth = 0
               , instrument = Nothing
@@ -178,12 +196,38 @@ type Msg
     | KeyDown KbdEvent.Model
     | KeyUp KbdEvent.Model
     | ReceivePortMessage E.Value
+    | VisibilityChange Browser.Events.Visibility
+
+
+handleVisibilityChange : Browser.Events.Visibility -> Model -> ( Model, Cmd Msg )
+handleVisibilityChange status model =
+    case status of
+        Browser.Events.Hidden ->
+            ( { model | appState = AppSleeping }
+            , sendPortMessage (encodePortMessage (AppStateChange True))
+            )
+
+        Browser.Events.Visible ->
+            ( { model | appState = AppActive }
+            , sendPortMessage (encodePortMessage (AppStateChange False))
+            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model.instrument of
-        Just instrument ->
+    case ( model.instrument, model.appState ) of
+        ( Nothing, _ ) ->
+            ( model, Cmd.none )
+
+        ( Just _, AppSleeping ) ->
+            case msg of
+                VisibilityChange status ->
+                    handleVisibilityChange status model
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ( Just instrument, AppActive ) ->
             case msg of
                 AnimationFrame newTime ->
                     ( { model
@@ -216,25 +260,26 @@ update msg model =
                         ( model, Cmd.none )
 
                 KeyDown event ->
-                      let
-                          newKeyState =
+                    let
+                        newKeyState =
                             case KbdState.get event.key model.kbdState of
                                 Just keyState ->
                                     { keyState | lastPressedAt = model.timeInMillis }
+
                                 Nothing ->
                                     { lastPressedAt = model.timeInMillis }
-                      in
-                      ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
-                      , Cmd.none
-                      )
-
+                    in
+                    ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
+                    , Cmd.none
+                    )
 
                 KeyUp event ->
                     case voiceIndexForKey event.key of
                         Just voiceIndex ->
-                          let
-                              volume = (intensityOfKeyPress model event.key)
-                          in
+                            let
+                                volume =
+                                    intensityOfKeyPress model event.key
+                            in
                             case Array.get voiceIndex instrument.voices of
                                 Just voice ->
                                     case Array.get 0 voice.notes of
@@ -264,8 +309,8 @@ update msg model =
                             , sendPortMessage (encodePortMessage (LogError (D.errorToString error)))
                             )
 
-        Nothing ->
-            ( model, Cmd.none )
+                VisibilityChange status ->
+                    handleVisibilityChange status model
 
 
 mouseOverVoice : Int -> MouseEvent.Model -> Msg
@@ -282,6 +327,7 @@ subscriptions _ =
     Sub.batch
         [ Browser.Events.onAnimationFrame AnimationFrame
         , Browser.Events.onResize (\w _ -> WindowResize w)
+        , Browser.Events.onVisibilityChange VisibilityChange
         , receivePortMessage ReceivePortMessage
         ]
 
@@ -688,13 +734,17 @@ voiceIndexForKey key =
         _ ->
             Nothing
 
+
 intensityOfKeyPress : Model -> KbdEvent.Key -> Float
 intensityOfKeyPress model key =
-  case (KbdState.get key model.kbdState) of
-    Just keyState ->
-      Basics.min 100 ((toFloat (model.timeInMillis - keyState.lastPressedAt)) / 100)
-    Nothing ->
-      0
+    case KbdState.get key model.kbdState of
+        Just keyState ->
+            Basics.min 100 (toFloat (model.timeInMillis - keyState.lastPressedAt) / 100)
+
+        Nothing ->
+            0
+
 
 mouseOverVoiceVolume : Float
-mouseOverVoiceVolume = 0.5
+mouseOverVoiceVolume =
+    0.5

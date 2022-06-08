@@ -14,6 +14,13 @@ interface LogErrorElmMsg {
   }
 }
 
+interface AppStateChangeElmMsg {
+  type: "appStateChange",
+  data: {
+    sleeping: boolean;
+  }
+}
+
 interface ElmApp {
   ports: {
     sendPortMessage: {
@@ -24,3 +31,4 @@ interface ElmApp {
     }
   }
 }
+

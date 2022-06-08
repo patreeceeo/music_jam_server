@@ -39,6 +39,8 @@ const player = new WebAudioFontPlayer();
 
 window.sessionStorage.setItem("phx:live-socket:debug", "false")
 
+let sleeping = false;
+
 
 function $(selector) {
   return Array.prototype.slice.apply(document.querySelectorAll(selector))
@@ -52,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ]
 
 
-  const elmApp = Elm.Main.init(config);
+  const elmApp = Elm.Main.init(win.config);
 
 
   Promise.all(promises).then(() => {
@@ -71,6 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
         case "logError":
           console.error(msg.data.message)
+          break;
+        case "appStateChange":
+          sleeping = msg.data.sleeping;
           break;
       }
     })
@@ -110,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const voiceInfo = {};
     channel.on("playSound", (event) => {
-      if(event.volume > 0) {
+      if(event.volume > 0 && !sleeping) {
         playGuiar(event.pitch, 5, event.volume)
         elmApp.ports.receivePortMessage.send({
           type: "playSound",
