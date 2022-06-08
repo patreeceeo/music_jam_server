@@ -48,7 +48,7 @@ esbuild.build(opts).then((result) => {
 
 
 
-if(mode !== 'deploy') {
+if(mode === 'watch') {
   // Exit the process when standard input closes due to:
   //   https://hexdocs.pm/elixir/1.10.2/Port.html#module-zombie-operating-system-processes
   //
@@ -65,4 +65,8 @@ if(mode !== 'deploy') {
       execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
     } catch (error) {}
   });
+} else {
+  try {
+    execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
+  } catch (error) {}
 }
