@@ -205,8 +205,8 @@ update msg model =
                         in
                         case pitchResult of
                             Ok pitch ->
-                                ( { model | instrument = Just (Instrument.playNote instrument index pitch 40 model.timeInMillis) }
-                                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = 40 }))
+                                ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.timeInMillis) }
+                                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume }))
                                 )
 
                             Err errMsg ->
@@ -232,12 +232,15 @@ update msg model =
                 KeyUp event ->
                     case voiceIndexForKey event.key of
                         Just voiceIndex ->
+                          let
+                              volume = (intensityOfKeyPress model event.key)
+                          in
                             case Array.get voiceIndex instrument.voices of
                                 Just voice ->
                                     case Array.get 0 voice.notes of
                                         Just pitch ->
-                                            ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch 40 model.timeInMillis) }
-                                            , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = (intensityOfKeyPress model event.key) }))
+                                            ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.timeInMillis) }
+                                            , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume }))
                                             )
 
                                         Nothing ->
@@ -252,7 +255,7 @@ update msg model =
                 ReceivePortMessage msgJson ->
                     case D.decodeValue decodePortMessage msgJson of
                         Ok playSound ->
-                            ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch 40 model.timeInMillis) }
+                            ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.timeInMillis) }
                             , Cmd.none
                             )
 
@@ -692,3 +695,6 @@ intensityOfKeyPress model key =
       Basics.min 100 ((toFloat (model.timeInMillis - keyState.lastPressedAt)) / 100)
     Nothing ->
       0
+
+mouseOverVoiceVolume : Float
+mouseOverVoiceVolume = 0.5
