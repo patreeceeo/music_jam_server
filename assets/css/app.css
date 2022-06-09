@@ -1,7 +1,19 @@
+@import 'normalize.css';
 
-/* TODO normalize/reset */
 body {
-  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+kbd {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2em;
+  line-height: 100%;
+  position: relative;
+  display: inline-block;
+  padding: 0.2em;
+  width: 1em;
+  height: 1em;
+  background-color: darkgray;
 }
 
 .instrument {
@@ -11,4 +23,10 @@ body {
 .inert {
   user-select: none;
   pointer-events: none;
+}
+
+.flow-container {
+  margin: 0 auto;
+  padding: 0 0.5cm;
+  max-width: 24cm;
 }
