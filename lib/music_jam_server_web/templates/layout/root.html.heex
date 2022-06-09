@@ -7,49 +7,8 @@
     <%= csrf_meta_tag() %>
     <%= live_title_tag assigns[:page_title] || "MusicJamServer", suffix: " · Phoenix Framework" %>
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
-    <script phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
-    <script phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/Elm.Main.js")}></script>
   </head>
   <body>
     <%= @inner_content %>
-    <div id="myapp"></div>
-    <footer class="flow-container">
-
-      <h1>FAQs</h1>
-      <h2>What is this?</h2>
-      <p>It is (or will be) a collaborative <a href="https://en.wikipedia.org/wiki/Synthesizer">synthesizer</a>. Still very much a work in progress.</p>
-      <h2>How is it collaborative?</h2>
-      <p>Give this link to a friend and ask them to open it on their laptop / desktop computer. Start clicking around or pressing keys and you'll hopefully see (and hear!) what I mean.</p>
-      <h2>What are the controls?</h2>
-      <p>For now, hold down a mouse button and drag over the strings to play them at the note corresponding to the fret the mouse passed over. Also the keys <kbd>S</kbd>, <kbd>D</kbd>, <kbd>F</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>L</kbd> can be used to play strings 0-6, respectively.</p>
-      <h2>What other features are you working on?</h2>
-      <ul>
-        <li>Chords - define chord progressions and cycle through them while playing them (or individual strings)</li>
-        <li>Loops - record, replay and layer loops</li>
-        <li>Jam rooms - like google meet rooms or discord voice channels, but for jammin'!</li>
-        <li>More then one instrument in the room</li>
-        <li>More types of instruments to choose from</li>
-        <li>Record and export to MIDI</li>
-        <li>Metronome</li>
-      </ul>
-      <p>The plan for now is to lean heavily on the humble QWERTY keyboard as the input device for when actually playing music, and leverage mouse interactions to minimize amount of VI-esque moding that users have to learn.</p>
-      <h1>Troubleshooting</h1>
-      <ul>
-        <li>Try using Google Chrome. This is an intensively multimedia app, not an ordinary website, and per my testing (June 2022), Chrome is still the best for such apps. Firefox, though great in many ways, is the worst in this particular category. If using IE, you have much bigger problems.</li>
-        <li>Use it on a desktop or laptop computer. Does not support mobile devices</li>
-        <li>Make sure JavaScript is enabled</li>
-      </ul>
-    </footer>
-    <script phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
-    <script defer>
-      window.config = {
-        node: document.getElementById('myapp'),
-        flags: {
-          screenWidth: window.innerWidth,
-          instrument: <%= raw instrument() %>
-        }
-      }
-
-    </script>
   </body>
 </html>

@@ -8,11 +8,4 @@ defmodule MusicJamServerWeb.LayoutView do
   # def render("fretboard.json", _assigns) do
   # end
 
-  def instrument() do
-    Jason.encode!(%{
-      voices: MusicJamServer.Insts.Fretboard.json(),
-    },
-      escape: :html_safe, map: :strict, pretty: true
-    )
-  end
 end
