@@ -4,7 +4,6 @@ import Array
 import Browser
 import Browser.Events
 import Html
-import Html.Events
 import Instrument
 import Json.Decode as D
 import Json.Encode as E
