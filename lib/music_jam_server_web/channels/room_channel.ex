@@ -1,5 +1,6 @@
 defmodule MusicJamServerWeb.RoomChannel do
   use Phoenix.Channel
+  require Logger
 
   def join("room:lobby", _message, socket) do
     {:ok, socket}
@@ -10,6 +11,8 @@ defmodule MusicJamServerWeb.RoomChannel do
   end
 
   def handle_in("playSound", payload, socket) do
+    %{"pitch" => pitch, "soundId" => _, "voiceIndex" => voiceIndex, "volume" => volume} = payload
+    Logger.info("playSound {pitch: #{pitch}, voiceIndex: #{voiceIndex}, volume: #{volume}}")
     broadcast_from!(socket, "playSound", payload)
     {:noreply, socket}
   end
