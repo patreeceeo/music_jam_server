@@ -1,4 +1,4 @@
-port module Main exposing (Model, PortMessage(..), encodePortMessage, main, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
+port module Main exposing (Model, PortMessage(..), AppState(..), encodePortMessage, main, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
 
 import Array
 import Browser

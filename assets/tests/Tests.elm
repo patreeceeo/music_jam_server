@@ -4,13 +4,14 @@ import Array
 import Expect
 import Instrument exposing (createInstrument, createInstrumentVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
 import Json.Encode as Encode
-import Main exposing (Model, PortMessage(..), encodePortMessage, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
+import Main exposing (Model, PortMessage(..), AppState(..), encodePortMessage, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
 import Test exposing (..)
 import Test.Html.Event as Event
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 import Utils exposing (PathSegment)
 import MouseEvent
+import KbdState
 
 
 
@@ -36,6 +37,8 @@ fretPlacementTests =
 wrapInstrument : Instrument.Model -> Model
 wrapInstrument instrument =
     { instrument = Just instrument
+    , kbdState = KbdState.init
+    , appState = AppActive
     , screenWidth = 1000
     , timeInMillis = 0
     }
@@ -112,7 +115,7 @@ suite =
                             MouseEvent.create 500 0 1
 
                         mouseOverVoiceMsg =
-                            mouseOverVoice 1 1000 0 mouseEvent
+                            mouseOverVoice 1 mouseEvent
                     in
                     view (wrapInstrument instrument)
                         |> Query.fromHtml
@@ -139,7 +142,7 @@ suite =
                             MouseEvent.create 500 0 1
 
                         ( updatedModel, _ ) =
-                            update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
+                            update (mouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
@@ -169,14 +172,14 @@ suite =
                             MouseEvent.create 500 0 1
 
                         ( _, playSoundCmd ) =
-                            update (mouseOverVoice 1 1000 0 mouseEvent) (wrapInstrument instrument)
+                            update (mouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
                     in
                     case getPitchResult of
                         Ok pitch ->
-                            Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = 1, pitch = pitch, volume = 40 })))
+                            Expect.equal playSoundCmd (sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = 1, pitch = pitch, volume = 0.5 })))
 
                         Err errMsg ->
                             Expect.fail errMsg
