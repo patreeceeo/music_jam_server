@@ -1,4 +1,4 @@
-module MouseEvent exposing (Model, create, decode)
+module MouseEvent exposing (Model, create, decode, mapDecode)
 
 import Json.Decode as D
 
@@ -17,11 +17,18 @@ create offsetX offsetY buttons =
     }
 
 
-decode : D.Decoder Model
-decode =
+decoder : D.Decoder Model
+decoder =
     D.map3
         Model
         (D.field "offsetX" D.int)
         (D.field "offsetY" D.int)
         (D.field "buttons" D.int)
 
+decode : D.Value -> Result D.Error Model
+decode value =
+  D.decodeValue decoder value
+
+mapDecode : (Model -> msg) -> D.Decoder msg
+mapDecode event =
+  D.map event decoder
