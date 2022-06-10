@@ -1,15 +1,20 @@
-port module PortMessage exposing (Message(..), RawMessage, encode, decode, send, receive)
+port module PortMessage exposing (Message(..), RawMessage, decode, encode, receive, send)
+
 import Json.Decode as D
 import Json.Encode as E
 
 
-type alias RawMessage = E.Value
+type alias RawMessage =
+    E.Value
+
 
 type alias MessageRecord =
     { type_ : String, data : PlaySoundRecord }
 
+
 type alias PlaySoundRecord =
     { soundId : String, voiceIndex : Int, pitch : Float, volume : Float }
+
 
 type Message
     = PlaySound PlaySoundRecord
@@ -18,15 +23,20 @@ type Message
 
 
 port outbox : E.Value -> Cmd msg
+
+
 port inbox : (E.Value -> msg) -> Sub msg
+
 
 send : Message -> Cmd mdg
 send msg =
-  outbox (encode msg)
+    outbox (encode msg)
+
 
 receive : (E.Value -> msg) -> Sub msg
 receive receiver =
-  inbox receiver
+    inbox receiver
+
 
 encode : Message -> E.Value
 encode msg =
@@ -62,9 +72,11 @@ encode msg =
                   )
                 ]
 
-decode: RawMessage -> Result D.Error MessageRecord
+
+decode : RawMessage -> Result D.Error MessageRecord
 decode raw =
-  D.decodeValue decoder raw
+    D.decodeValue decoder raw
+
 
 decoder : D.Decoder MessageRecord
 decoder =

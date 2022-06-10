@@ -16,5 +16,4 @@ defmodule MusicJamServerWeb.RoomChannel do
     broadcast_from!(socket, "playSound", payload)
     {:noreply, socket}
   end
-
 end

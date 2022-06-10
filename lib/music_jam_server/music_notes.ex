@@ -1,6 +1,6 @@
 defmodule MusicJamServer.MusicNotes do
   @type note_name :: :C | :c | :D | :d | :E | :F | :f | :G | :g | :A | :a | :B
-  @type note :: { note_name(), integer() }
+  @type note :: {note_name(), integer()}
   @type scalar_note :: integer()
 
   @spec list_names() :: list(note_name())
@@ -17,7 +17,7 @@ defmodule MusicJamServer.MusicNotes do
       :g,
       :A,
       :a,
-      :B,
+      :B
     ]
   end
 
@@ -29,8 +29,9 @@ defmodule MusicJamServer.MusicNotes do
   @spec interpolate(scalar_note(), scalar_note()) :: list(scalar_note())
   def interpolate(first, last) do
     if first > last do
-        raise "MusicNotes.interpolate: first arg should be lower pitch"
+      raise "MusicNotes.interpolate: first arg should be lower pitch"
     end
+
     Enum.to_list(first..last)
   end
 

@@ -1,24 +1,27 @@
-module Main exposing (Model, main, update, view, Msg(..))
+module Main exposing (Model, Msg(..), main, update, view)
 
 import Array
 import Browser
 import Html
 import Instrument
 import Json.Decode as D
-import MouseEvent
-import Svg.Attributes exposing (..)
-import OperatingSystem as OS
 import KbdEvent
 import KbdState
+import MouseEvent
+import OperatingSystem as OS
 import PortMessage
+import Svg.Attributes exposing (..)
 import UserInterfaces as UIs
+
 
 
 -- CONSTANTS
 
+
 mouseOverVoiceVolume : Float
 mouseOverVoiceVolume =
     0.5
+
 
 
 -- MAIN
@@ -34,7 +37,9 @@ main =
         }
 
 
+
 -- MODEL
+
 
 type alias Flags =
     { screenWidth : Int
@@ -43,7 +48,7 @@ type alias Flags =
 
 
 type alias Model =
-    { os: OS.Model
+    { os : OS.Model
     , instrument : Maybe Instrument.Model
     }
 
@@ -53,7 +58,7 @@ init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
             ( { os = OS.init decodedFlags.screenWidth
-            , instrument = Just (.instrument decodedFlags)
+              , instrument = Just (.instrument decodedFlags)
               }
             , Cmd.none
             )
@@ -76,76 +81,75 @@ decodeFlags =
 
 -- UPDATE
 
+
 type Msg
     = OSMsg OS.Msg
     | MouseOverVoice Int MouseEvent.Model
 
 
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case (msg, model.instrument) of
-    (OSMsg (OS.KeyUp event), Just instrument) ->
-        case voiceIndexForKey event.key of
-            Just voiceIndex ->
+    case ( msg, model.instrument ) of
+        ( OSMsg (OS.KeyUp event), Just instrument ) ->
+            case voiceIndexForKey event.key of
+                Just voiceIndex ->
+                    let
+                        volume =
+                            intensityOfKeyPress model event.key
+                    in
+                    case Array.get voiceIndex instrument.voices of
+                        Just voice ->
+                            case Array.get 0 voice.notes of
+                                Just pitch ->
+                                    ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis) }
+                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                                    )
+
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ( OSMsg (OS.ReceivePortMessage rawMsg), Just instrument ) ->
+            case PortMessage.decode rawMsg of
+                Ok playSound ->
+                    ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( model
+                    , PortMessage.send (PortMessage.LogError (D.errorToString error))
+                    )
+
+        ( MouseOverVoice index event, Just instrument ) ->
+            if event.buttons > 0 then
                 let
-                    volume =
-                        intensityOfKeyPress model event.key
+                    pitchResult =
+                        Instrument.pitchAtOffset event.offsetX model.os.screenWidth instrument index
                 in
-                case Array.get voiceIndex instrument.voices of
-                    Just voice ->
-                        case Array.get 0 voice.notes of
-                            Just pitch ->
-                                ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis) }
-                                , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
-                                )
+                case pitchResult of
+                    Ok pitch ->
+                        ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.os.timeInMillis) }
+                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
+                        )
 
-                            Nothing ->
-                                ( model, Cmd.none )
+                    Err errMsg ->
+                        ( model, PortMessage.send (PortMessage.LogError errMsg) )
 
-                    Nothing ->
-                        ( model, Cmd.none )
-
-            Nothing ->
+            else
                 ( model, Cmd.none )
 
-    (OSMsg (OS.ReceivePortMessage rawMsg), Just instrument) ->
+        ( OSMsg subMsg, _ ) ->
+            OS.update subMsg model.os
+                |> updateWith (\os -> { model | os = os }) OSMsg
 
-                      case PortMessage.decode rawMsg of
-                          Ok playSound ->
-                              ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
-                              , Cmd.none
-                              )
-
-                          Err error ->
-                              ( model
-                              , PortMessage.send (PortMessage.LogError (D.errorToString error))
-                              )
-
-    (MouseOverVoice index event, Just instrument) ->
-          if event.buttons > 0 then
-              let
-                  pitchResult =
-                      Instrument.pitchAtOffset event.offsetX model.os.screenWidth instrument index
-              in
-              case pitchResult of
-                  Ok pitch ->
-                      ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.os.timeInMillis) }
-                      , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
-                      )
-
-                  Err errMsg ->
-                      ( model, PortMessage.send (PortMessage.LogError errMsg) )
-
-          else
-              ( model, Cmd.none )
-
-    (OSMsg subMsg, _) ->
-      OS.update subMsg model.os
-        |> updateWith (\os -> { model | os = os }) OSMsg
-
-    (_, Nothing) ->
-      (model, Cmd.none)
+        ( _, Nothing ) ->
+            ( model, Cmd.none )
 
 
 updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
@@ -153,9 +157,6 @@ updateWith toModel toMsg ( subModel, subCmd ) =
     ( toModel subModel
     , Cmd.map toMsg subCmd
     )
-
-
-
 
 
 
@@ -176,12 +177,10 @@ view model =
     case model.instrument of
         Just instrument ->
             Html.div []
-              [UIs.instrument instrument model.os MouseOverVoice]
+                [ UIs.instrument instrument model.os MouseOverVoice ]
 
         Nothing ->
             Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
-
-
 
 
 voiceIndexForKey : KbdEvent.Key -> Maybe Int

@@ -1,9 +1,10 @@
-module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, decodeInstrument, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch, playNote, instW, instH, fretWidth, fretCount, isInlayFret)
+module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, decodeInstrument, fretCount, fretDistance, fretIndex, fretWidth, instH, instW, isInlayFret, pitchAtOffset, playNote, setCurrentPitch)
 
 import Array exposing (Array)
 import Json.Decode as D
 import Svg.Attributes exposing (..)
 import Utils exposing (flip3)
+
 
 
 -- MODEL
@@ -50,6 +51,7 @@ asCurrentPitchIn : Voice -> Float -> Voice
 asCurrentPitchIn voice pitch =
     { voice | currentPitch = pitch }
 
+
 asLastNoteStartTimeIn : Voice -> Int -> Voice
 asLastNoteStartTimeIn voice when =
     { voice | lastNoteStartTime = when }
@@ -66,21 +68,26 @@ setCurrentPitch instrument voiceIndex pitch =
         Nothing ->
             instrument
 
+
 setLastNoteStartTime : Model -> Int -> Int -> Model
 setLastNoteStartTime instrument voiceIndex when =
-  case Array.get voiceIndex instrument.voices of
-    Just voice ->
-      when
-        |> asLastNoteStartTimeIn voice
-        |> asVoiceIn voiceIndex instrument
-    Nothing ->
-      instrument
+    case Array.get voiceIndex instrument.voices of
+        Just voice ->
+            when
+                |> asLastNoteStartTimeIn voice
+                |> asVoiceIn voiceIndex instrument
+
+        Nothing ->
+            instrument
+
 
 playNote : Model -> Int -> Float -> Float -> Int -> Model
 playNote instrument voiceIndex pitch volume when =
-  instrument
-    |> ((flip3 setCurrentPitch) pitch voiceIndex)
-    |> ((flip3 setLastNoteStartTime) when voiceIndex)
+    instrument
+        |> flip3 setCurrentPitch pitch voiceIndex
+        |> flip3 setLastNoteStartTime when voiceIndex
+
+
 
 -- DECODE JSON
 
@@ -141,6 +148,7 @@ instH : Float
 instH =
     200
 
+
 fretCount : Int
 fretCount =
     24
@@ -182,5 +190,3 @@ isEqualRemainder dividend divisor remainder =
 isInlayFret : Int -> Bool
 isInlayFret index =
     List.any (isEqualRemainder index 12) [ 3, 5, 7, 9, 0 ]
-
-

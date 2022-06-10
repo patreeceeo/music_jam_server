@@ -2,6 +2,7 @@ module MouseEvent exposing (Model, create, decode, mapDecode)
 
 import Json.Decode as D
 
+
 type alias Model =
     { offsetX : Int
     , offsetY : Int
@@ -25,10 +26,12 @@ decoder =
         (D.field "offsetY" D.int)
         (D.field "buttons" D.int)
 
+
 decode : D.Value -> Result D.Error Model
 decode value =
-  D.decodeValue decoder value
+    D.decodeValue decoder value
+
 
 mapDecode : (Model -> msg) -> D.Decoder msg
 mapDecode event =
-  D.map event decoder
+    D.map event decoder

@@ -7,5 +7,4 @@ defmodule MusicJamServerWeb.LayoutView do
 
   # def render("fretboard.json", _assigns) do
   # end
-
 end

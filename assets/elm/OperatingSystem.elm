@@ -1,11 +1,11 @@
-module OperatingSystem exposing (AppState(..), Model, init, Msg(..), handleVisibilityChange, subscriptions, update)
+module OperatingSystem exposing (AppState(..), Model, Msg(..), handleVisibilityChange, init, subscriptions, update)
 
 import Browser.Events
+import Json.Decode as D
 import KbdEvent
 import KbdState
-import Time
 import PortMessage
-import Json.Decode as D
+import Time
 
 
 {-| Foundational bits and bytes that encapsulate and abstract the host system i.e. Web browser
@@ -17,9 +17,6 @@ import Json.Decode as D
 
 
 -- TODO use Float unless it really has to be an Int? Or vice versa?
-
-
-
 -- MODEL
 
 
@@ -43,6 +40,7 @@ init screenWidth =
     , kbdState = KbdState.init
     , screenWidth = screenWidth
     }
+
 
 
 -- UPDATE
@@ -70,54 +68,55 @@ handleVisibilityChange status model =
             , PortMessage.send (PortMessage.AppStateChange False)
             )
 
-update : Msg -> Model -> (Model, Cmd Msg)
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-        case model.appState of
-          AppSleeping ->
-              case msg of
-                  VisibilityChange status ->
+    case model.appState of
+        AppSleeping ->
+            case msg of
+                VisibilityChange status ->
                     handleVisibilityChange status model
 
-                  _ ->
-                    (model, Cmd.none)
+                _ ->
+                    ( model, Cmd.none )
 
-          AppActive ->
-              case msg of
-                  AnimationFrame newTime ->
-                      ( { model
-                          | timeInMillis = Time.posixToMillis newTime
-                        }
-                      , Cmd.none
-                      )
+        AppActive ->
+            case msg of
+                AnimationFrame newTime ->
+                    ( { model
+                        | timeInMillis = Time.posixToMillis newTime
+                      }
+                    , Cmd.none
+                    )
 
-                  WindowResize width ->
-                      ( { model | screenWidth = width }
-                      , Cmd.none
-                      )
+                WindowResize width ->
+                    ( { model | screenWidth = width }
+                    , Cmd.none
+                    )
 
+                KeyDown event ->
+                    let
+                        newKeyState =
+                            case KbdState.get event.key model.kbdState of
+                                Just keyState ->
+                                    { keyState | lastPressedAt = model.timeInMillis }
 
-                  KeyDown event ->
-                      let
-                          newKeyState =
-                              case KbdState.get event.key model.kbdState of
-                                  Just keyState ->
-                                      { keyState | lastPressedAt = model.timeInMillis }
+                                Nothing ->
+                                    { lastPressedAt = model.timeInMillis }
+                    in
+                    ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
+                    , Cmd.none
+                    )
 
-                                  Nothing ->
-                                      { lastPressedAt = model.timeInMillis }
-                      in
-                      ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
-                      , Cmd.none
-                      )
+                KeyUp _ ->
+                    ( model, Cmd.none )
 
-                  KeyUp _ ->
-                      ( model, Cmd.none )
+                ReceivePortMessage _ ->
+                    ( model, Cmd.none )
 
-                  ReceivePortMessage _ ->
-                      ( model, Cmd.none )
+                VisibilityChange status ->
+                    handleVisibilityChange status model
 
-                  VisibilityChange status ->
-                      handleVisibilityChange status model
 
 
 -- SUBSCRIPTIONS
@@ -129,8 +128,7 @@ subscriptions _ =
         [ Browser.Events.onAnimationFrame AnimationFrame
         , Browser.Events.onResize (\w _ -> WindowResize w)
         , Browser.Events.onVisibilityChange VisibilityChange
-        , Browser.Events.onKeyDown  (KbdEvent.decode |> D.map KeyDown)
+        , Browser.Events.onKeyDown (KbdEvent.decode |> D.map KeyDown)
         , Browser.Events.onKeyUp (KbdEvent.decode |> D.map KeyUp)
         , PortMessage.receive ReceivePortMessage
         ]
-

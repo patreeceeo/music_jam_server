@@ -1,42 +1,41 @@
 module UserInterfaces exposing (instrument, viewStringAnimationValues)
 
 import Array
-import Instrument
 import Html
+import Instrument
+import MouseEvent
+import OperatingSystem as OS
 import Svg
 import Svg.Attributes as SvgA
 import Svg.Events
-import Utils exposing (PathSegment, joinNums, joinPoints, loopInt, joinAnimationValues)
-import OperatingSystem as OS
-import MouseEvent
+import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
 
 
 viewBox : String
 viewBox =
     joinNums " " [ 0, 0, Instrument.instW, Instrument.instH + instShadowH ]
 
+
 instrument : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> msg) -> Html.Html msg
-instrument instrumentModel osModel msgForMouseOver = 
-                Svg.svg
-                    [ SvgA.class "instrument"
-                    , SvgA.preserveAspectRatio "xMidYMid meet"
-                    , SvgA.viewBox viewBox
-                    ]
-                    ([ svgDefs
-                     , outerPoly
-                     , frets
-                     ]
-                        ++ viewInlays
-                        ++ viewStrings instrumentModel osModel msgForMouseOver
-                        ++ viewDebugging instrumentModel
-                    )
+instrument instrumentModel osModel msgForMouseOver =
+    Svg.svg
+        [ SvgA.class "instrument"
+        , SvgA.preserveAspectRatio "xMidYMid meet"
+        , SvgA.viewBox viewBox
+        ]
+        ([ svgDefs
+         , outerPoly
+         , frets
+         ]
+            ++ viewInlays
+            ++ viewStrings instrumentModel osModel msgForMouseOver
+            ++ viewDebugging instrumentModel
+        )
 
 
 instShadowH : Float
 instShadowH =
     20
-
-
 
 
 outerPolyPoints : String
@@ -314,10 +313,9 @@ viewString voice index time msgForMouseOver =
 
 viewStrings : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> msg) -> List (Svg.Svg msg)
 viewStrings instrumentModel osModel msgForMouseOver =
-  List.indexedMap
-    (\index voice -> viewString voice index osModel.timeInMillis (msgForMouseOver index))
-    (Array.toList instrumentModel.voices)
-
+    List.indexedMap
+        (\index voice -> viewString voice index osModel.timeInMillis (msgForMouseOver index))
+        (Array.toList instrumentModel.voices)
 
 
 viewDebugVoiceNote : Int -> ( Int, Float ) -> Svg.Svg msg

@@ -1,4 +1,4 @@
-module Utils exposing (joinNums, joinPoints, flip3, PathSegment, joinAnimationValues, joinPathSegments, loopInt)
+module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt)
 
 
 joinNums : String -> List Float -> String
@@ -32,7 +32,6 @@ joinPathSegments segments =
     String.join " " (List.map (\seg -> seg.command ++ joinPoints seg.points) segments)
 
 
-
 flip3 : (a -> b -> c -> retval) -> c -> b -> a -> retval
 flip3 function a b c =
     function c b a
@@ -40,4 +39,4 @@ flip3 function a b c =
 
 loopInt : Int -> Int -> Int -> Int
 loopInt min max curr =
-  (modBy (max - min) (curr - min)) + min
+    modBy (max - min) (curr - min) + min
