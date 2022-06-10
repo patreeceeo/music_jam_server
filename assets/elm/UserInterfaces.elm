@@ -1,4 +1,4 @@
-module UserInterfaces exposing (instrument)
+module UserInterfaces exposing (instrument, viewStringAnimationValues)
 
 import Array
 import Instrument

@@ -1,4 +1,4 @@
-module OperatingSystem exposing (AppState(..), Model, initModel, Msg(..), handleVisibilityChange, subscriptions, update)
+module OperatingSystem exposing (AppState(..), Model, init, Msg(..), handleVisibilityChange, subscriptions, update)
 
 import Browser.Events
 import KbdEvent
@@ -36,8 +36,8 @@ type alias Model =
     }
 
 
-initModel : Int -> Model
-initModel screenWidth =
+init : Int -> Model
+init screenWidth =
     { appState = AppActive
     , timeInMillis = 0
     , kbdState = KbdState.init

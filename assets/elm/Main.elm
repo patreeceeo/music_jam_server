@@ -1,4 +1,4 @@
-module Main exposing (Model, main, update, view)
+module Main exposing (Model, main, update, view, Msg(..))
 
 import Array
 import Browser
@@ -52,14 +52,14 @@ init : D.Value -> ( Model, Cmd Msg )
 init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
-            ( { os = OS.initModel decodedFlags.screenWidth
+            ( { os = OS.init decodedFlags.screenWidth
             , instrument = Just (.instrument decodedFlags)
               }
             , Cmd.none
             )
 
         Err errMsg ->
-            ( { os = OS.initModel 0
+            ( { os = OS.init 0
               , instrument = Nothing
               }
             , PortMessage.send (PortMessage.LogError (D.errorToString errMsg))
