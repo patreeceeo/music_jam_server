@@ -37,7 +37,7 @@ get key model =
   case (keyToInt key) of
     Just intKey ->
       Dict.get intKey model
-    Nothing ->
+    _ ->
       Nothing
 
 init : Model

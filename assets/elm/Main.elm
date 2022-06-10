@@ -1,21 +1,26 @@
-port module Main exposing (Model, PortMessage(..), AppState(..), encodePortMessage, main, mouseOverVoice, sendPortMessage, update, view, viewStringAnimationValues)
+module Main exposing (Model, main, update, view, viewStringAnimationValues)
 
 import Array
 import Browser
-import Browser.Events
 import Html
 import Instrument
 import Json.Decode as D
-import Json.Encode as E
-import KbdEvent
-import KbdState
 import MouseEvent
 import Svg
 import Svg.Attributes exposing (..)
-import Svg.Events
-import Time
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
+import OperatingSystem as OS
+import Svg.Events
+import KbdEvent
+import KbdState
+import PortMessage
 
+
+-- CONSTANTS
+
+mouseOverVoiceVolume : Float
+mouseOverVoiceVolume =
+    0.5
 
 
 -- MAIN
@@ -31,106 +36,7 @@ main =
         }
 
 
-
--- TODO use Float unless it really has to be an Int? Or vice versa?
--- PORTS
-
-
-type alias PlaySoundWrapper =
-    { type_ : String, data : PlaySoundData }
-
-
-type alias PlaySoundData =
-    { soundId : String, voiceIndex : Int, pitch : Float, volume : Float }
-
-
-type PortMessage
-    = PlaySound PlaySoundData
-    | LogError String
-    | AppStateChange Bool
-
-
-port sendPortMessage : E.Value -> Cmd msg
-
-
-port receivePortMessage : (E.Value -> msg) -> Sub msg
-
-
-encodePortMessage : PortMessage -> E.Value
-encodePortMessage msg =
-    case msg of
-        PlaySound data ->
-            E.object
-                [ ( "type", E.string "playSound" )
-                , ( "data"
-                  , E.object
-                        [ ( "soundId", E.string data.soundId )
-                        , ( "voiceIndex", E.int data.voiceIndex )
-                        , ( "pitch", E.float data.pitch )
-                        , ( "volume", E.float data.volume )
-                        ]
-                  )
-                ]
-
-        LogError errMsg ->
-            E.object
-                [ ( "type", E.string "logError" )
-                , ( "data"
-                  , E.object
-                        [ ( "message", E.string errMsg ) ]
-                  )
-                ]
-
-        AppStateChange sleeping ->
-            E.object
-                [ ( "type", E.string "appStateChange" )
-                , ( "data"
-                  , E.object
-                        [ ( "sleeping", E.bool sleeping ) ]
-                  )
-                ]
-
-
-decodePortMessage : D.Decoder PlaySoundWrapper
-decodePortMessage =
-    D.at [ "type" ] D.string
-        |> D.andThen decodePortMessageData
-
-
-decodePortMessageData : String -> D.Decoder PlaySoundWrapper
-decodePortMessageData type_ =
-    case type_ of
-        "playSound" ->
-            decodePlaySoundMessage
-
-        _ ->
-            D.fail ("unhandled message type " ++ type_)
-
-
-decodePlaySoundMessage : D.Decoder PlaySoundWrapper
-decodePlaySoundMessage =
-    D.map2 PlaySoundWrapper
-        (D.field "type" D.string)
-        (D.field "data" decodePlaySoundMessageData)
-
-
-decodePlaySoundMessageData : D.Decoder PlaySoundData
-decodePlaySoundMessageData =
-    D.map4 PlaySoundData
-        (D.field "soundId" D.string)
-        (D.field "voiceIndex" D.int)
-        (D.field "pitch" D.float)
-        (D.field "volume" D.float)
-
-
-
 -- MODEL
-
-
-initKbdState : KbdState.Model
-initKbdState =
-    KbdState.init
-
 
 type alias Flags =
     { screenWidth : Int
@@ -138,16 +44,8 @@ type alias Flags =
     }
 
 
-type AppState
-    = AppSleeping
-    | AppActive
-
-
 type alias Model =
-    { appState : AppState
-    , timeInMillis : Int
-    , screenWidth : Int
-    , kbdState : KbdState.Model
+    { os: OS.Model
     , instrument : Maybe Instrument.Model
     }
 
@@ -156,23 +54,17 @@ init : D.Value -> ( Model, Cmd Msg )
 init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
-            ( { appState = AppActive
-              , timeInMillis = 0
-              , kbdState = initKbdState
-              , screenWidth = decodedFlags.screenWidth
-              , instrument = Just (.instrument decodedFlags)
+            ( { os = OS.initModel decodedFlags.screenWidth
+            , instrument = Just (.instrument decodedFlags)
               }
             , Cmd.none
             )
 
         Err errMsg ->
-            ( { appState = AppSleeping
-              , timeInMillis = 0
-              , kbdState = initKbdState
-              , screenWidth = 0
+            ( { os = OS.initModel 0
               , instrument = Nothing
               }
-            , sendPortMessage (encodePortMessage (LogError (D.errorToString errMsg)))
+            , PortMessage.send (PortMessage.LogError (D.errorToString errMsg))
             )
 
 
@@ -186,134 +78,86 @@ decodeFlags =
 
 -- UPDATE
 
-
 type Msg
-    = AnimationFrame Time.Posix
-    | WindowResize Int
+    = OSMsg OS.Msg
     | MouseOverVoice Int MouseEvent.Model
-    | KeyDown KbdEvent.Model
-    | KeyUp KbdEvent.Model
-    | ReceivePortMessage E.Value
-    | VisibilityChange Browser.Events.Visibility
 
-
-handleVisibilityChange : Browser.Events.Visibility -> Model -> ( Model, Cmd Msg )
-handleVisibilityChange status model =
-    case status of
-        Browser.Events.Hidden ->
-            ( { model | appState = AppSleeping }
-            , sendPortMessage (encodePortMessage (AppStateChange True))
-            )
-
-        Browser.Events.Visible ->
-            ( { model | appState = AppActive }
-            , sendPortMessage (encodePortMessage (AppStateChange False))
-            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( model.instrument, model.appState ) of
-        ( Nothing, _ ) ->
-            ( model, Cmd.none )
-
-        ( Just _, AppSleeping ) ->
-            case msg of
-                VisibilityChange status ->
-                    handleVisibilityChange status model
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ( Just instrument, AppActive ) ->
-            case msg of
-                AnimationFrame newTime ->
-                    ( { model
-                        | timeInMillis = Time.posixToMillis newTime
-                      }
-                    , Cmd.none
-                    )
-
-                WindowResize width ->
-                    ( { model | screenWidth = width }
-                    , Cmd.none
-                    )
-
-                MouseOverVoice index event ->
-                    if event.buttons > 0 then
-                        let
-                            pitchResult =
-                                Instrument.pitchAtOffset event.offsetX model.screenWidth instrument index
-                        in
-                        case pitchResult of
-                            Ok pitch ->
-                                ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.timeInMillis) }
-                                , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume }))
+  case (msg, model.instrument) of
+    (OSMsg (OS.KeyUp event), Just instrument) ->
+        case voiceIndexForKey event.key of
+            Just voiceIndex ->
+                let
+                    volume =
+                        intensityOfKeyPress model event.key
+                in
+                case Array.get voiceIndex instrument.voices of
+                    Just voice ->
+                        case Array.get 0 voice.notes of
+                            Just pitch ->
+                                ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis) }
+                                , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
                                 )
 
-                            Err errMsg ->
-                                ( model, sendPortMessage (encodePortMessage (LogError errMsg)) )
+                            Nothing ->
+                                ( model, Cmd.none )
 
-                    else
+                    Nothing ->
                         ( model, Cmd.none )
 
-                KeyDown event ->
-                    let
-                        newKeyState =
-                            case KbdState.get event.key model.kbdState of
-                                Just keyState ->
-                                    { keyState | lastPressedAt = model.timeInMillis }
+            Nothing ->
+                ( model, Cmd.none )
 
-                                Nothing ->
-                                    { lastPressedAt = model.timeInMillis }
-                    in
-                    ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
-                    , Cmd.none
-                    )
+    (OSMsg (OS.ReceivePortMessage rawMsg), Just instrument) ->
 
-                KeyUp event ->
-                    case voiceIndexForKey event.key of
-                        Just voiceIndex ->
-                            let
-                                volume =
-                                    intensityOfKeyPress model event.key
-                            in
-                            case Array.get voiceIndex instrument.voices of
-                                Just voice ->
-                                    case Array.get 0 voice.notes of
-                                        Just pitch ->
-                                            ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.timeInMillis) }
-                                            , sendPortMessage (encodePortMessage (PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume }))
-                                            )
+                      case PortMessage.decode rawMsg of
+                          Ok playSound ->
+                              ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
+                              , Cmd.none
+                              )
 
-                                        Nothing ->
-                                            ( model, Cmd.none )
+                          Err error ->
+                              ( model
+                              , PortMessage.send (PortMessage.LogError (D.errorToString error))
+                              )
 
-                                Nothing ->
-                                    ( model, Cmd.none )
+    (MouseOverVoice index event, Just instrument) ->
+          if event.buttons > 0 then
+              let
+                  pitchResult =
+                      Instrument.pitchAtOffset event.offsetX model.os.screenWidth instrument index
+              in
+              case pitchResult of
+                  Ok pitch ->
+                      ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.os.timeInMillis) }
+                      , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
+                      )
 
-                        Nothing ->
-                            ( model, Cmd.none )
+                  Err errMsg ->
+                      ( model, PortMessage.send (PortMessage.LogError errMsg) )
 
-                ReceivePortMessage msgJson ->
-                    case D.decodeValue decodePortMessage msgJson of
-                        Ok playSound ->
-                            ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.timeInMillis) }
-                            , Cmd.none
-                            )
+          else
+              ( model, Cmd.none )
 
-                        Err error ->
-                            ( model
-                            , sendPortMessage (encodePortMessage (LogError (D.errorToString error)))
-                            )
+    (OSMsg subMsg, _) ->
+      OS.update subMsg model.os
+        |> updateWith (\os -> { model | os = os }) OSMsg
 
-                VisibilityChange status ->
-                    handleVisibilityChange status model
+    (_, Nothing) ->
+      (model, Cmd.none)
 
 
-mouseOverVoice : Int -> MouseEvent.Model -> Msg
-mouseOverVoice index event =
-    MouseOverVoice index event
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
+
+
+
 
 
 
@@ -321,15 +165,8 @@ mouseOverVoice index event =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ Browser.Events.onAnimationFrame AnimationFrame
-        , Browser.Events.onResize (\w _ -> WindowResize w)
-        , Browser.Events.onVisibilityChange VisibilityChange
-        , Browser.Events.onKeyDown  (KbdEvent.decode |> D.map KeyDown)
-        , Browser.Events.onKeyUp (KbdEvent.decode |> D.map KeyUp)
-        , receivePortMessage ReceivePortMessage
-        ]
+subscriptions model =
+    Sub.map OSMsg (OS.subscriptions model.os)
 
 
 
@@ -648,7 +485,7 @@ viewStrings model =
     case model.instrument of
         Just instrument ->
             List.indexedMap
-                (\index voice -> viewString voice index model.timeInMillis)
+                (\index voice -> viewString voice index model.os.timeInMillis)
                 (Array.toList instrument.voices)
 
         Nothing ->
@@ -695,6 +532,7 @@ onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
     Svg.Events.on "mouseover" (D.map event MouseEvent.decode)
 
+
 voiceIndexForKey : KbdEvent.Key -> Maybe Int
 voiceIndexForKey key =
     case key of
@@ -722,14 +560,9 @@ voiceIndexForKey key =
 
 intensityOfKeyPress : Model -> KbdEvent.Key -> Float
 intensityOfKeyPress model key =
-    case KbdState.get key model.kbdState of
+    case KbdState.get key model.os.kbdState of
         Just keyState ->
-            Basics.min 100 (toFloat (model.timeInMillis - keyState.lastPressedAt) / 100)
+            Basics.min 100 (toFloat (model.os.timeInMillis - keyState.lastPressedAt) / 100)
 
         Nothing ->
             0
-
-
-mouseOverVoiceVolume : Float
-mouseOverVoiceVolume =
-    0.5

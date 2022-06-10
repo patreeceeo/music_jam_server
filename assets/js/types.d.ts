@@ -23,10 +23,10 @@ interface AppStateChangeElmMsg {
 
 interface ElmApp {
   ports: {
-    sendPortMessage: {
+    outbox: {
       subscribe: (callback: (msg: ElmMsg) => void) => void
     }
-    receivePortMessage: {
+    inbox: {
       send: (msg: ElmMsg) => void
     }
   }

@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     var gainBass = audioContext.createGain();gainBass.connect(audioContext.destination);gainBass.gain.value=0.7;
     var gainHit = audioContext.createGain();gainHit.connect(audioContext.destination);gainHit.gain.value=0.5;
 
-    elmApp.ports.sendPortMessage.subscribe((msg) => {
+    elmApp.ports.outbox.subscribe((msg) => {
       switch(msg.type) {
         case "playSound":
           pushUpdate(msg.data)
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
     channel.on("playSound", (event) => {
       if(event.volume > 0 && !sleeping) {
         playGuiar(event.pitch, 5, event.volume)
-        elmApp.ports.receivePortMessage.send({
+        elmApp.ports.inbox.send({
           type: "playSound",
           data: event
         })
