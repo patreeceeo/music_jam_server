@@ -6,7 +6,6 @@ import Html
 import Instrument
 import Json.Decode as D
 import KbdEvent
-import KbdState
 import MouseEvent
 import OperatingSystem as OS
 import PortMessage
@@ -210,9 +209,4 @@ voiceIndexForKey key =
 
 intensityOfKeyPress : Model -> KbdEvent.Key -> Float
 intensityOfKeyPress model key =
-    case KbdState.get key model.os.kbdState of
-        Just keyState ->
-            Basics.min 100 (toFloat (model.os.timeInMillis - keyState.lastPressedAt) / 100)
-
-        Nothing ->
-            0
+    Basics.min 100 (toFloat (OS.milisSinceKeyDown key model.os) / 100)

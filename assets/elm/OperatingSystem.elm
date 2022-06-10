@@ -1,4 +1,4 @@
-module OperatingSystem exposing (AppState(..), Model, Msg(..), handleVisibilityChange, init, subscriptions, update)
+module OperatingSystem exposing (AppState(..), Model, Msg(..), handleVisibilityChange, init, milisSinceKeyDown, subscriptions, update)
 
 import Browser.Events
 import Json.Decode as D
@@ -132,3 +132,17 @@ subscriptions _ =
         , Browser.Events.onKeyUp (KbdEvent.decode |> D.map KeyUp)
         , PortMessage.receive ReceivePortMessage
         ]
+
+
+
+-- HELPERS
+
+
+milisSinceKeyDown : KbdEvent.Key -> Model -> Int
+milisSinceKeyDown key model =
+    case KbdState.get key model.kbdState of
+        Just keyState ->
+            model.timeInMillis - keyState.lastPressedAt
+
+        Nothing ->
+            0
