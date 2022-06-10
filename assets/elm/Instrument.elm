@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, createInstrument, createInstrumentVoice, decodeInstrument, fretCount, fretDistance, fretIndex, fretWidth, instH, instW, isInlayFret, pitchAtOffset, playNote, setCurrentPitch)
+module Instrument exposing (Model, Voice, init, initVoice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, width, isInlayFret, pitchAtOffset, playNote, setCurrentPitch)
 
 import Array exposing (Array)
 import Json.Decode as D
@@ -23,14 +23,14 @@ type alias Model =
     }
 
 
-createInstrument : List Voice -> Model
-createInstrument voices =
+init : List Voice -> Model
+init voices =
     { voices = Array.fromList voices
     }
 
 
-createInstrumentVoice : List Float -> Voice
-createInstrumentVoice notes =
+initVoice : List Float -> Voice
+initVoice notes =
     { currentPitch = 0
     , currentVolume = 0
     , lastNoteStartTime = 0
@@ -92,8 +92,8 @@ playNote instrument voiceIndex pitch volume when =
 -- DECODE JSON
 
 
-decodeInstrument : D.Decoder Model
-decodeInstrument =
+decoder : D.Decoder Model
+decoder =
     D.map Model
         (D.field "voices" decodeInstrumentVoices)
 
@@ -117,7 +117,7 @@ pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float
 pitchAtOffset offset screenWidth instrument voiceIndex =
     let
         unscaledOffset =
-            (toFloat offset / toFloat screenWidth) * instW
+            (toFloat offset / toFloat screenWidth) * width
 
         noteIndex =
             fretIndex unscaledOffset
@@ -136,16 +136,15 @@ pitchAtOffset offset screenWidth instrument voiceIndex =
 
 
 
--- VIEW
 
-
-instW : Float
-instW =
+-- TODO turn some of these into parameters
+width : Float
+width =
     2000
 
 
-instH : Float
-instH =
+height : Float
+height =
     200
 
 
@@ -161,14 +160,14 @@ k =
 
 fretDistance : Int -> Float
 fretDistance index =
-    instW * 1.3 * (1 - (e ^ (-k * toFloat index)))
+    width * 1.3 * (1 - (e ^ (-k * toFloat index)))
 
 
 fretIndex : Float -> Int
 fretIndex distance =
     let
         antiLog =
-            -1 * (distance - (instW * 1.3)) / (instW * 1.3)
+            -1 * (distance - (width * 1.3)) / (width * 1.3)
     in
     ceiling ((-1 * logBase e antiLog / k) - 1)
 

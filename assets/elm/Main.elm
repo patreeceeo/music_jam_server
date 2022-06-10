@@ -74,7 +74,7 @@ decodeFlags : D.Decoder Flags
 decodeFlags =
     D.map2 Flags
         (D.field "screenWidth" D.int)
-        (D.field "instrument" Instrument.decodeInstrument)
+        (D.field "instrument" Instrument.decoder)
 
 
 
@@ -113,18 +113,6 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        ( OSMsg (OS.ReceivePortMessage rawMsg), Just instrument ) ->
-            case PortMessage.decode rawMsg of
-                Ok playSound ->
-                    ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
-                    , Cmd.none
-                    )
-
-                Err error ->
-                    ( model
-                    , PortMessage.send (PortMessage.LogError (D.errorToString error))
-                    )
-
         ( MouseOverVoice index event, Just instrument ) ->
             if event.buttons > 0 then
                 let
@@ -142,6 +130,18 @@ update msg model =
 
             else
                 ( model, Cmd.none )
+
+        ( OSMsg (OS.ReceivePortMessage rawMsg), Just instrument ) ->
+            case PortMessage.decode rawMsg of
+                Ok playSound ->
+                    ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( model
+                    , PortMessage.send (PortMessage.LogError (D.errorToString error))
+                    )
 
         ( OSMsg subMsg, _ ) ->
             OS.update subMsg model.os
@@ -176,7 +176,8 @@ view model =
     case model.instrument of
         Just instrument ->
             Html.div []
-                [ UIs.instrument instrument model.os MouseOverVoice ]
+                [ UIs.instrument instrument model.os MouseOverVoice
+                ]
 
         Nothing ->
             Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]

@@ -2,7 +2,7 @@ module Tests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (createInstrument, createInstrumentVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
+import Instrument exposing (init, initVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
 import Json.Encode as Encode
 import KbdState
 import Main exposing (Model, update, view)
@@ -52,19 +52,19 @@ suite =
             \_ ->
                 let
                     voice1 =
-                        createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                        initVoice [ 1.0, 2.0, 3.0 ]
 
                     voice2 =
-                        createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                        initVoice [ 1.0, 2.0, 3.0 ]
 
                     modifiedVoice2 =
                         { voice2 | currentPitch = 42 }
 
                     voice3 =
-                        createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                        initVoice [ 1.0, 2.0, 3.0 ]
 
                     instrument =
-                        createInstrument [ voice1, voice2, voice3 ]
+                        init [ voice1, voice2, voice3 ]
                 in
                 Expect.equal
                     { voices = Array.fromList [ voice1, modifiedVoice2, voice3 ]
@@ -74,10 +74,10 @@ suite =
             \_ ->
                 let
                     voice1 =
-                        createInstrumentVoice (List.map toFloat (List.range 0 24))
+                        initVoice (List.map toFloat (List.range 0 24))
 
                     instrument =
-                        createInstrument [ voice1 ]
+                        init [ voice1 ]
 
                     getPitchResult =
                         pitchAtOffset 500 1000 instrument 0
@@ -93,16 +93,16 @@ suite =
                 \_ ->
                     let
                         voice1 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            initVoice [ 1.0, 2.0, 3.0 ]
 
                         voice2 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            initVoice [ 1.0, 2.0, 3.0 ]
 
                         voice3 =
-                            createInstrumentVoice [ 1.0, 2.0, 3.0 ]
+                            initVoice [ 1.0, 2.0, 3.0 ]
 
                         instrument =
-                            createInstrument [ voice1, voice2, voice3 ]
+                            init [ voice1, voice2, voice3 ]
 
                         simulatedEventObject =
                             Encode.object
@@ -127,16 +127,16 @@ suite =
                     -- TODO this test needs to be broken up?
                     let
                         voice1 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         voice2 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         voice3 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         instrument =
-                            createInstrument [ voice1, voice2, voice3 ]
+                            init [ voice1, voice2, voice3 ]
 
                         mouseEvent =
                             MouseEvent.create 500 0 1
@@ -157,16 +157,16 @@ suite =
                 \_ ->
                     let
                         voice1 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         voice2 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         voice3 =
-                            createInstrumentVoice (List.map toFloat (List.range 0 24))
+                            initVoice (List.map toFloat (List.range 0 24))
 
                         instrument =
-                            createInstrument [ voice1, voice2, voice3 ]
+                            init [ voice1, voice2, voice3 ]
 
                         mouseEvent =
                             MouseEvent.create 500 0 1

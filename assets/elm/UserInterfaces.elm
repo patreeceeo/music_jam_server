@@ -13,7 +13,7 @@ import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, l
 
 viewBox : String
 viewBox =
-    joinNums " " [ 0, 0, Instrument.instW, Instrument.instH + instShadowH ]
+    joinNums " " [ 0, 0, Instrument.width, Instrument.height + instShadowH ]
 
 
 instrument : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> msg) -> Html.Html msg
@@ -40,7 +40,7 @@ instShadowH =
 
 outerPolyPoints : String
 outerPolyPoints =
-    joinPoints [ [ 0, 0 ], [ Instrument.instW, 0 ], [ Instrument.instW, Instrument.instH ], [ 0, Instrument.instH ] ]
+    joinPoints [ [ 0, 0 ], [ Instrument.width, 0 ], [ Instrument.width, Instrument.height ], [ 0, Instrument.height ] ]
 
 
 viewInlays : List (Svg.Svg msg)
@@ -49,7 +49,7 @@ viewInlays =
         (\index ->
             Svg.circle
                 [ SvgA.cx (String.fromFloat (Instrument.fretDistance index + Instrument.fretWidth index / 2))
-                , SvgA.cy (String.fromFloat (Instrument.instH / 2))
+                , SvgA.cy (String.fromFloat (Instrument.height / 2))
                 , SvgA.r "16"
                 , SvgA.fill "rgba(255, 255, 255, 0.1)"
                 ]
@@ -162,7 +162,7 @@ outerPoly =
 
 fretPath : Int -> String
 fretPath index =
-    "M" ++ joinNums " " [ Instrument.fretDistance index, 0, Instrument.fretDistance index, Instrument.instH ]
+    "M" ++ joinNums " " [ Instrument.fretDistance index, 0, Instrument.fretDistance index, Instrument.height ]
 
 
 fretIndexes : List Int
@@ -204,10 +204,10 @@ activeFretX voice =
                 Instrument.fretDistance (floor (voice.currentPitch - firstNote))
 
             else
-                Instrument.instW
+                Instrument.width
 
         Nothing ->
-            Instrument.instW
+            Instrument.width
 
 
 stringY : Int -> Float
@@ -290,10 +290,10 @@ viewStringAnimation voice index time =
                 activeFretX voice
 
             else
-                Instrument.instW
+                Instrument.width
 
         values_ =
-            viewStringAnimationValues activeFretX_ (stringY index) Instrument.instW (44000 / (voice.currentPitch * voice.currentPitch)) amplitude
+            viewStringAnimationValues activeFretX_ (stringY index) Instrument.width (44000 / (voice.currentPitch * voice.currentPitch)) amplitude
     in
     Svg.animate [ SvgA.attributeName "d", SvgA.values (joinAnimationValues values_), SvgA.dur (String.fromInt stringAnimationDurationMS ++ "ms"), SvgA.repeatCount "indefinite" ] []
 
