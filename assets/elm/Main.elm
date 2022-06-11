@@ -1,6 +1,5 @@
 module Main exposing (Model, Msg(..), main, update, view)
 
-import Array
 import Browser
 import Html
 import Instrument
@@ -11,6 +10,7 @@ import OperatingSystem as OS
 import PortMessage
 import Svg.Attributes exposing (..)
 import UserInterfaces as UIs
+import Maybe.Extra
 
 
 
@@ -90,28 +90,25 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.instrument ) of
         ( OSMsg (OS.KeyUp event), Just instrument ) ->
-            case voiceIndexForKey event.key of
-                Just voiceIndex ->
+            let
+                volume =
+                  intensityOfKeyPress model event.key
+                default = ( model, Cmd.none)
+            in
+            voiceIndexForKey event.key
+              |> Maybe.Extra.unwrap default (\voiceIndex ->
+
+                Instrument.noteAt 0 voiceIndex instrument
+                  |> Maybe.Extra.unwrap default (\pitch ->
                     let
-                        volume =
-                            intensityOfKeyPress model event.key
+                        newInstrument = Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis
                     in
-                    case Array.get voiceIndex instrument.voices of
-                        Just voice ->
-                            case Array.get 0 voice.notes of
-                                Just pitch ->
-                                    ( { model | instrument = Just (Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis) }
-                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
-                                    )
+                    ({ model | instrument = Just newInstrument}
+                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                    )
+                    )
+                )
 
-                                Nothing ->
-                                    ( model, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         ( MouseOverVoice index event, Just instrument ) ->
             if event.buttons > 0 then

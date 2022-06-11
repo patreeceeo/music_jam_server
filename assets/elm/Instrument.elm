@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, init, initVoice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, width, isInlayFret, pitchAtOffset, playNote, setCurrentPitch)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, playNote, setCurrentPitch, width, noteAt)
 
 import Array exposing (Array)
 import Json.Decode as D
@@ -81,6 +81,7 @@ setLastNoteStartTime instrument voiceIndex when =
             instrument
 
 
+-- TODO use volume
 playNote : Model -> Int -> Float -> Float -> Int -> Model
 playNote instrument voiceIndex pitch volume when =
     instrument
@@ -136,8 +137,9 @@ pitchAtOffset offset screenWidth instrument voiceIndex =
 
 
 
-
 -- TODO turn some of these into parameters
+
+
 width : Float
 width =
     2000
@@ -189,3 +191,13 @@ isEqualRemainder dividend divisor remainder =
 isInlayFret : Int -> Bool
 isInlayFret index =
     List.any (isEqualRemainder index 12) [ 3, 5, 7, 9, 0 ]
+
+-- HELPERS
+
+noteAt : Int -> Int -> Model -> Maybe Float
+noteAt noteIndex voiceIndex model =
+  Array.get voiceIndex model.voices
+    |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
+
+
+
