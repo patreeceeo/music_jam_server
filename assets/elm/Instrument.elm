@@ -2,8 +2,8 @@ module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fret
 
 import Array exposing (Array)
 import Json.Decode as D
-import Svg.Attributes exposing (..)
 import Maybe.Extra
+import Svg.Attributes exposing (..)
 
 
 
@@ -51,9 +51,11 @@ asCurrentPitchIn : Voice -> Float -> Voice
 asCurrentPitchIn voice pitch =
     { voice | currentPitch = pitch }
 
+
 asCurrentVolumeIn : Voice -> Float -> Voice
 asCurrentVolumeIn voice pitch =
-    { voice | currentPitch = pitch }
+    { voice | currentVolume = pitch }
+
 
 asLastNoteStartTimeIn : Voice -> Int -> Voice
 asLastNoteStartTimeIn voice when =
@@ -62,33 +64,35 @@ asLastNoteStartTimeIn voice when =
 
 setCurrentPitch : Float -> Int -> Model -> Model
 setCurrentPitch pitch voiceIndex instrument =
-  voiceAt voiceIndex instrument
-    |> Maybe.Extra.unwrap instrument (\voice ->
-            pitch
-                |> asCurrentPitchIn voice
-                |> asVoiceIn voiceIndex instrument
-                )
+    voiceAt voiceIndex instrument
+        |> Maybe.Extra.unwrap instrument
+            (\voice ->
+                pitch
+                    |> asCurrentPitchIn voice
+                    |> asVoiceIn voiceIndex instrument
+            )
 
 
 setCurrentVolume : Float -> Int -> Model -> Model
 setCurrentVolume volume voiceIndex instrument =
-  voiceAt voiceIndex instrument
-    |> Maybe.Extra.unwrap instrument (\voice ->
-            volume
-                |> asCurrentVolumeIn voice
-                |> asVoiceIn voiceIndex instrument
-                )
+    voiceAt voiceIndex instrument
+        |> Maybe.Extra.unwrap instrument
+            (\voice ->
+                volume
+                    |> asCurrentVolumeIn voice
+                    |> asVoiceIn voiceIndex instrument
+            )
 
 
 setLastNoteStartTime : Int -> Int -> Model -> Model
 setLastNoteStartTime when voiceIndex instrument =
-  voiceAt voiceIndex instrument
-    |> Maybe.Extra.unwrap instrument (\voice ->
-            when
-                |> asLastNoteStartTimeIn voice
-                |> asVoiceIn voiceIndex instrument
-                )
-
+    voiceAt voiceIndex instrument
+        |> Maybe.Extra.unwrap instrument
+            (\voice ->
+                when
+                    |> asLastNoteStartTimeIn voice
+                    |> asVoiceIn voiceIndex instrument
+            )
 
 
 
@@ -100,6 +104,7 @@ playNote instrument voiceIndex pitch volume when =
     instrument
         |> setCurrentPitch pitch voiceIndex
         |> setLastNoteStartTime when voiceIndex
+        |> setCurrentVolume volume voiceIndex
 
 
 
@@ -209,11 +214,13 @@ isInlayFret index =
 
 -- HELPERS
 
+
 voiceAt : Int -> Model -> Maybe Voice
 voiceAt voiceIndex model =
-  Array.get voiceIndex model.voices
+    Array.get voiceIndex model.voices
+
 
 noteAt : Int -> Int -> Model -> Maybe Float
 noteAt noteIndex voiceIndex model =
-  voiceAt voiceIndex model
-    |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
+    voiceAt voiceIndex model
+        |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)

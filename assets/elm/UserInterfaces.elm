@@ -283,7 +283,7 @@ viewStringAnimation voice index time =
             time - voice.lastNoteStartTime
 
         amplitude =
-            sin (radians (pi * (toFloat stringAmplitudeCycleDurationMS / toFloat (loopInt 0 stringAmplitudeCycleDurationMS timeElapsed)))) * stringMaxAmplitudePX * toFloat (noteDurationMS - timeElapsed) / toFloat noteDurationMS
+            sin (radians (pi * (toFloat stringAmplitudeCycleDurationMS / toFloat (loopInt 0 stringAmplitudeCycleDurationMS timeElapsed)))) * stringMaxAmplitudePX * toFloat (noteDurationMS - timeElapsed) / toFloat noteDurationMS * voice.currentVolume
 
         activeFretX_ =
             if timeElapsed < noteDurationMS then
