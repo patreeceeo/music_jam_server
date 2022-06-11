@@ -1,9 +1,8 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, playNote, setCurrentPitch, width, noteAt)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, noteAt, pitchAtOffset, playNote, setCurrentPitch, width)
 
 import Array exposing (Array)
 import Json.Decode as D
 import Svg.Attributes exposing (..)
-import Utils exposing (flip3)
 
 
 
@@ -57,8 +56,8 @@ asLastNoteStartTimeIn voice when =
     { voice | lastNoteStartTime = when }
 
 
-setCurrentPitch : Model -> Int -> Float -> Model
-setCurrentPitch instrument voiceIndex pitch =
+setCurrentPitch : Float -> Int -> Model -> Model
+setCurrentPitch pitch voiceIndex instrument =
     case Array.get voiceIndex instrument.voices of
         Just voice ->
             pitch
@@ -69,8 +68,8 @@ setCurrentPitch instrument voiceIndex pitch =
             instrument
 
 
-setLastNoteStartTime : Model -> Int -> Int -> Model
-setLastNoteStartTime instrument voiceIndex when =
+setLastNoteStartTime : Int -> Int -> Model -> Model
+setLastNoteStartTime when voiceIndex instrument =
     case Array.get voiceIndex instrument.voices of
         Just voice ->
             when
@@ -81,12 +80,15 @@ setLastNoteStartTime instrument voiceIndex when =
             instrument
 
 
+
 -- TODO use volume
+
+
 playNote : Model -> Int -> Float -> Float -> Int -> Model
 playNote instrument voiceIndex pitch volume when =
     instrument
-        |> flip3 setCurrentPitch pitch voiceIndex
-        |> flip3 setLastNoteStartTime when voiceIndex
+        |> setCurrentPitch pitch voiceIndex
+        |> setLastNoteStartTime when voiceIndex
 
 
 
@@ -192,12 +194,12 @@ isInlayFret : Int -> Bool
 isInlayFret index =
     List.any (isEqualRemainder index 12) [ 3, 5, 7, 9, 0 ]
 
+
+
 -- HELPERS
+
 
 noteAt : Int -> Int -> Model -> Maybe Float
 noteAt noteIndex voiceIndex model =
-  Array.get voiceIndex model.voices
-    |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
-
-
-
+    Array.get voiceIndex model.voices
+        |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)

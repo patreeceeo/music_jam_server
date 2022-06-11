@@ -4,7 +4,6 @@ import Array
 import Expect
 import Instrument exposing (init, initVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
 import Json.Encode as Encode
-import KbdState
 import Main exposing (Model, update, view)
 import MouseEvent
 import OperatingSystem as OS
@@ -69,7 +68,7 @@ suite =
                 Expect.equal
                     { voices = Array.fromList [ voice1, modifiedVoice2, voice3 ]
                     }
-                    (setCurrentPitch instrument 1 42)
+                    (setCurrentPitch 42 1 instrument)
         , test "getPitchFromOffset" <|
             \_ ->
                 let
@@ -149,7 +148,7 @@ suite =
                     in
                     case getPitchResult of
                         Ok pitch ->
-                            Expect.equal (Just (setCurrentPitch instrument 1 pitch)) updatedModel.instrument
+                            Expect.equal (Just (setCurrentPitch pitch 1 instrument)) updatedModel.instrument
 
                         Err errMsg ->
                             Expect.fail errMsg

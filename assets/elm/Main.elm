@@ -5,12 +5,12 @@ import Html
 import Instrument
 import Json.Decode as D
 import KbdEvent
+import Maybe.Extra
 import MouseEvent
 import OperatingSystem as OS
 import PortMessage
 import Svg.Attributes exposing (..)
 import UserInterfaces as UIs
-import Maybe.Extra
 
 
 
@@ -92,23 +92,26 @@ update msg model =
         ( OSMsg (OS.KeyUp event), Just instrument ) ->
             let
                 volume =
-                  intensityOfKeyPress model event.key
-                default = ( model, Cmd.none)
+                    intensityOfKeyPress model event.key
+
+                default =
+                    ( model, Cmd.none )
             in
             voiceIndexForKey event.key
-              |> Maybe.Extra.unwrap default (\voiceIndex ->
-
-                Instrument.noteAt 0 voiceIndex instrument
-                  |> Maybe.Extra.unwrap default (\pitch ->
-                    let
-                        newInstrument = Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis
-                    in
-                    ({ model | instrument = Just newInstrument}
-                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                |> Maybe.Extra.unwrap default
+                    (\voiceIndex ->
+                        Instrument.noteAt 0 voiceIndex instrument
+                            |> Maybe.Extra.unwrap default
+                                (\pitch ->
+                                    let
+                                        newInstrument =
+                                            Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis
+                                    in
+                                    ( { model | instrument = Just newInstrument }
+                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                                    )
+                                )
                     )
-                    )
-                )
-
 
         ( MouseOverVoice index event, Just instrument ) ->
             if event.buttons > 0 then
