@@ -14,6 +14,7 @@ import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 import UserInterfaces as UI
 import Utils exposing (PathSegment)
+import Instrument exposing (setCurrentVolume)
 
 
 
@@ -148,7 +149,7 @@ suite =
                     in
                     case getPitchResult of
                         Ok pitch ->
-                            Expect.equal (Just (setCurrentPitch pitch 1 instrument)) updatedModel.instrument
+                            Expect.equal (Just (instrument |> setCurrentPitch pitch 1 |> setCurrentVolume 0.5 1)) updatedModel.instrument
 
                         Err errMsg ->
                             Expect.fail errMsg
