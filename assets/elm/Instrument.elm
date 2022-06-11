@@ -1,8 +1,9 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, noteAt, pitchAtOffset, playNote, setCurrentPitch, width)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, noteAt, pitchAtOffset, playNote, setCurrentPitch, setCurrentVolume, width)
 
 import Array exposing (Array)
 import Json.Decode as D
 import Svg.Attributes exposing (..)
+import Maybe.Extra
 
 
 
@@ -50,6 +51,9 @@ asCurrentPitchIn : Voice -> Float -> Voice
 asCurrentPitchIn voice pitch =
     { voice | currentPitch = pitch }
 
+asCurrentVolumeIn : Voice -> Float -> Voice
+asCurrentVolumeIn voice pitch =
+    { voice | currentPitch = pitch }
 
 asLastNoteStartTimeIn : Voice -> Int -> Voice
 asLastNoteStartTimeIn voice when =
@@ -58,26 +62,33 @@ asLastNoteStartTimeIn voice when =
 
 setCurrentPitch : Float -> Int -> Model -> Model
 setCurrentPitch pitch voiceIndex instrument =
-    case Array.get voiceIndex instrument.voices of
-        Just voice ->
+  voiceAt voiceIndex instrument
+    |> Maybe.Extra.unwrap instrument (\voice ->
             pitch
                 |> asCurrentPitchIn voice
                 |> asVoiceIn voiceIndex instrument
+                )
 
-        Nothing ->
-            instrument
+
+setCurrentVolume : Float -> Int -> Model -> Model
+setCurrentVolume volume voiceIndex instrument =
+  voiceAt voiceIndex instrument
+    |> Maybe.Extra.unwrap instrument (\voice ->
+            volume
+                |> asCurrentVolumeIn voice
+                |> asVoiceIn voiceIndex instrument
+                )
 
 
 setLastNoteStartTime : Int -> Int -> Model -> Model
 setLastNoteStartTime when voiceIndex instrument =
-    case Array.get voiceIndex instrument.voices of
-        Just voice ->
+  voiceAt voiceIndex instrument
+    |> Maybe.Extra.unwrap instrument (\voice ->
             when
                 |> asLastNoteStartTimeIn voice
                 |> asVoiceIn voiceIndex instrument
+                )
 
-        Nothing ->
-            instrument
 
 
 
@@ -198,8 +209,11 @@ isInlayFret index =
 
 -- HELPERS
 
+voiceAt : Int -> Model -> Maybe Voice
+voiceAt voiceIndex model =
+  Array.get voiceIndex model.voices
 
 noteAt : Int -> Int -> Model -> Maybe Float
 noteAt noteIndex voiceIndex model =
-    Array.get voiceIndex model.voices
-        |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
+  voiceAt voiceIndex model
+    |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
