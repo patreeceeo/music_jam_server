@@ -1,10 +1,20 @@
-module Delta exposing (compose, Composer, map, Mapper)
+module Delta exposing (Composer, compose)
+-- TODO rename to Modely
 
-type alias Getter model subModel = model -> subModel
-type alias Updater msg model = msg -> model -> model
-type alias Setter model subModel = subModel -> model -> model
-type alias Composer msg model subModel = (Getter model subModel, Updater msg subModel, Setter model subModel)
-type alias Mapper msg model subModel result = (Getter model subModel, (msg -> subModel -> result))
+type alias Getter model subModel =
+    model -> subModel
+
+
+type alias Updater msg model return =
+    msg -> model -> return
+
+
+type alias Setter model subModel =
+    subModel -> model -> model
+
+
+type alias Composer msg model subModel updateReturn =
+    ( Getter model subModel, Updater msg subModel updateReturn, Setter model subModel )
 
 
 -- Like List.Extra.mapAccumr but simpler
@@ -12,23 +22,26 @@ mapAccumr : (a -> b -> a) -> a -> List b -> a
 mapAccumr f acc0 list =
     List.foldr
         (\x acc1 ->
-          f acc1 x
+            f acc1 x
         )
         acc0
         list
 
-compose : List (Composer msg model subModel) -> model -> msg -> model -> model
-compose clist initModel msg currentModel =
-  mapAccumr (runComposer msg currentModel) initModel clist
 
-runComposer : msg -> model -> model -> (Composer msg model subModel) -> model
-runComposer msg currentModel accModel (get, update, set) =
-  set (update msg (get currentModel)) accModel
+compose : List (Composer msg model subModel (subModel, cmd)) -> (List cmd -> cmd) -> msg -> model -> (model, cmd)
+compose clist batchCmds msg model =
+    let
+        (newModel, cmdList) = mapAccumr (runComposer msg model) (model, []) clist
+    in
+    (newModel, batchCmds cmdList)
 
-map : List (Mapper msg model subModel (Cmd msg)) -> msg -> model -> List (Cmd msg)
-map mlist msg model =
-  List.map (\mapper -> runMapper msg model mapper) mlist
 
-runMapper : msg -> model -> Mapper msg model subModel result -> result
-runMapper msg model (get, map_) =
-  map_ msg (get model)
+runComposer : msg -> model -> (model, List cmd) -> Composer msg model subModel (subModel, cmd) -> (model, List cmd)
+runComposer msg currentModel acc ( get, update, set ) =
+    let
+        (accModel, accCmd) = acc
+        (newModel, newCmd) = update msg (get currentModel)
+    in
+    ((set newModel accModel), List.append [newCmd] (accCmd) )
+
+
