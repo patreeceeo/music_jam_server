@@ -1,8 +1,4 @@
-module Modely exposing (Composer, compose, SelectorsByName, select)
-import Dict exposing (Dict)
-
--- TODO rename to Modely
-
+module Modely exposing (Composer, SelectorsByName, compose)
 
 type alias Getter model subModel =
     model -> subModel
@@ -19,8 +15,11 @@ type alias Setter model subModel =
 type alias Composer msg model subModel selectors updateReturn =
     ( Getter model subModel, Updater msg subModel selectors updateReturn, Setter model subModel )
 
+
 type alias SelectorsByName selectorParams selectorReturn =
-    Dict String (selectorParams -> selectorReturn)
+    (selectorParams -> selectorReturn)
+
+
 
 -- Like List.Extra.mapAccumr but simpler
 
@@ -34,13 +33,6 @@ mapAccumr f acc0 list =
         acc0
         list
 
-
-select : (SelectorsByName selectorParams selectorReturn) -> String -> selectorParams -> selectorReturn -> selectorReturn
-select selectors name params default =
-  case (Dict.get name selectors) of
-      Just select_ -> select_ params
-      Nothing -> default
-  
 
 compose : List (Composer msg model subModel (SelectorsByName selectorParams selectorReturn) ( subModel, cmd )) -> (List cmd -> cmd) -> SelectorsByName selectorParams selectorReturn -> msg -> model -> ( model, cmd )
 compose clist batchCmds selectors msg model =
