@@ -17,8 +17,8 @@ type alias Composer msg model subModel selectors updateReturn =
     ( Getter model subModel, Updater msg subModel selectors updateReturn, Setter model subModel )
 
 
-type alias Selectors selectorParams selectorReturn =
-    selectorParams -> selectorReturn
+type alias Selectors selectorCall =
+    selectorCall -> selectorCall
 
 
 
@@ -35,7 +35,7 @@ mapAccumr f acc0 list =
         list
 
 
-compose : List (Composer msg model subModel (Selectors selectorParams selectorReturn) ( subModel, cmd )) -> (List cmd -> cmd) -> Selectors selectorParams selectorReturn -> msg -> model -> ( model, cmd )
+compose : List (Composer msg model subModel (Selectors selectorCalls) ( subModel, cmd )) -> (List cmd -> cmd) -> Selectors selectorCalls -> msg -> model -> ( model, cmd )
 compose clist batchCmds selectors msg model =
     let
         ( newModel, cmdList ) =
@@ -44,7 +44,7 @@ compose clist batchCmds selectors msg model =
     ( newModel, batchCmds cmdList )
 
 
-runComposer : msg -> model -> Selectors selectorParams selectorReturn -> ( model, List cmd ) -> Composer msg model subModel (Selectors selectorParams selectorReturn) ( subModel, cmd ) -> ( model, List cmd )
+runComposer : msg -> model -> Selectors selectorCalls -> ( model, List cmd ) -> Composer msg model subModel (Selectors selectorCalls) ( subModel, cmd ) -> ( model, List cmd )
 runComposer msg currentModel selectors acc ( get, update, set ) =
     let
         ( accModel, accCmd ) =

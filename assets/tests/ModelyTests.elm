@@ -25,11 +25,7 @@ type Msg
 
 
 type Selectors
-    = APlus Int
-
-
-type SelectorReturn
-    = APlusReturn Int
+    = APlus Int Int
 
 
 batchCmds : List String -> String
@@ -37,12 +33,12 @@ batchCmds list =
     String.join ", " list
 
 
-subUpdate : Msg -> SubModel -> Modely.Selectors Selectors SelectorReturn -> ( SubModel, String )
+subUpdate : Msg -> SubModel -> Modely.Selectors Selectors -> ( SubModel, String )
 subUpdate msg subModel selectors =
     if msg == Inc then
         let
-            (APlusReturn aPlusReturn) =
-                selectors (APlus 5)
+            (APlus _ aPlusReturn) =
+                selectors (APlus 5 0)
         in
         ( { subModel | count = subModel.count + 1 + aPlusReturn }, "cmd a" )
 
@@ -50,11 +46,11 @@ subUpdate msg subModel selectors =
         ( subModel, "cmd b" )
 
 
-bindSelectors : Model -> Modely.Selectors Selectors SelectorReturn
+bindSelectors : Model -> Modely.Selectors Selectors
 bindSelectors model call =
     case call of
-        APlus amount ->
-            APlusReturn (model.subA.count + amount)
+        APlus amount _ ->
+            APlus amount (model.subA.count + amount)
 
 
 testCompose : List Test
