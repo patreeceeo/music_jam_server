@@ -1,4 +1,5 @@
-module Modely exposing (Composer, compose)
+module Modely exposing (Composer, compose, SelectorsByName, select)
+import Dict exposing (Dict)
 
 -- TODO rename to Modely
 
@@ -7,18 +8,19 @@ type alias Getter model subModel =
     model -> subModel
 
 
-type alias Updater msg model return =
-    msg -> model -> return
+type alias Updater msg model selectors return =
+    msg -> model -> selectors -> return
 
 
 type alias Setter model subModel =
     subModel -> model -> model
 
 
-type alias Composer msg model subModel updateReturn =
-    ( Getter model subModel, Updater msg subModel updateReturn, Setter model subModel )
+type alias Composer msg model subModel selectors updateReturn =
+    ( Getter model subModel, Updater msg subModel selectors updateReturn, Setter model subModel )
 
-
+type alias SelectorsByName selectorParams selectorReturn =
+    Dict String (selectorParams -> selectorReturn)
 
 -- Like List.Extra.mapAccumr but simpler
 
@@ -33,22 +35,29 @@ mapAccumr f acc0 list =
         list
 
 
-compose : List (Composer msg model subModel ( subModel, cmd )) -> (List cmd -> cmd) -> msg -> model -> ( model, cmd )
-compose clist batchCmds msg model =
+select : (SelectorsByName selectorParams selectorReturn) -> String -> selectorParams -> selectorReturn -> selectorReturn
+select selectors name params default =
+  case (Dict.get name selectors) of
+      Just select_ -> select_ params
+      Nothing -> default
+  
+
+compose : List (Composer msg model subModel (SelectorsByName selectorParams selectorReturn) ( subModel, cmd )) -> (List cmd -> cmd) -> SelectorsByName selectorParams selectorReturn -> msg -> model -> ( model, cmd )
+compose clist batchCmds selectors msg model =
     let
         ( newModel, cmdList ) =
-            mapAccumr (runComposer msg model) ( model, [] ) clist
+            mapAccumr (runComposer msg model selectors) ( model, [] ) clist
     in
     ( newModel, batchCmds cmdList )
 
 
-runComposer : msg -> model -> ( model, List cmd ) -> Composer msg model subModel ( subModel, cmd ) -> ( model, List cmd )
-runComposer msg currentModel acc ( get, update, set ) =
+runComposer : msg -> model -> SelectorsByName selectorParams selectorReturn -> ( model, List cmd ) -> Composer msg model subModel (SelectorsByName selectorParams selectorReturn) ( subModel, cmd ) -> ( model, List cmd )
+runComposer msg currentModel selectors acc ( get, update, set ) =
     let
         ( accModel, accCmd ) =
             acc
 
         ( newModel, newCmd ) =
-            update msg (get currentModel)
+            update msg (get currentModel) selectors
     in
     ( set newModel accModel, List.append [ newCmd ] accCmd )
