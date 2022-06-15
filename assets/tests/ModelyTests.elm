@@ -37,7 +37,7 @@ batchCmds list =
     String.join ", " list
 
 
-subUpdate : Msg -> SubModel -> Modely.SelectorsByName Selectors SelectorReturn -> ( SubModel, String )
+subUpdate : Msg -> SubModel -> Modely.Selectors Selectors SelectorReturn -> ( SubModel, String )
 subUpdate msg subModel selectors =
     if msg == Inc then
         let
@@ -50,11 +50,11 @@ subUpdate msg subModel selectors =
         ( subModel, "cmd b" )
 
 
-bindSelectors : Model -> Modely.SelectorsByName Selectors SelectorReturn
-bindSelectors model call = 
- case call of
-   APlus amount -> APlusReturn (model.subA.count + amount)
-
+bindSelectors : Model -> Modely.Selectors Selectors SelectorReturn
+bindSelectors model call =
+    case call of
+        APlus amount ->
+            APlusReturn (model.subA.count + amount)
 
 
 testCompose : List Test
