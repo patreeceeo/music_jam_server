@@ -35,11 +35,11 @@ mapAccumr f acc0 list =
         list
 
 
-compose : List (Composer msg model subModel (Selectors selectorCalls) ( subModel, cmd )) -> (List cmd -> cmd) -> Selectors selectorCalls -> msg -> model -> ( model, cmd )
+compose : List (Composer msg model subModel (Selectors selectorCalls) ( subModel, cmd )) -> (List cmd -> cmd) -> (model -> Selectors selectorCalls) -> msg -> model -> ( model, cmd )
 compose clist batchCmds selectors msg model =
     let
         ( newModel, cmdList ) =
-            mapAccumr (runComposer msg model selectors) ( model, [] ) clist
+            mapAccumr (runComposer msg model (selectors model)) ( model, [] ) clist
     in
     ( newModel, batchCmds cmdList )
 

@@ -73,7 +73,7 @@ testCompose =
             ]
 
         updateFn =
-            Modely.compose subApps batchCmds (bindSelectors model)
+            Modely.compose subApps batchCmds bindSelectors
 
         ( newModel1, cmd ) =
             updateFn Inc model
