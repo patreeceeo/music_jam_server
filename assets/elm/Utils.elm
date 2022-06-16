@@ -1,4 +1,4 @@
-module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt)
+module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
 
 
 joinNums : String -> List Float -> String
@@ -40,3 +40,23 @@ flip3 function a b c =
 loopInt : Int -> Int -> Int -> Int
 loopInt min max curr =
     modBy (max - min) (curr - min) + min
+
+
+tagReturnWith : (untagged -> tagged) -> (input -> untagged) -> (input -> tagged)
+tagReturnWith tag f param =
+    tag (f param)
+
+
+tagReturnWithP2 : (untagged -> tagged) -> (a -> b -> untagged) -> (a -> b -> tagged)
+tagReturnWithP2 tag f a b =
+    tag (f a b)
+
+
+untagP1 : (tagged -> p1) -> (p1 -> p2 -> return) -> (tagged -> p2 -> return)
+untagP1 untag f tagged p2 =
+    f (untag tagged) p2
+
+
+untagP2 : (tagged -> p2) -> (p1 -> p2 -> return) -> (p1 -> tagged -> return)
+untagP2 untag f p1 tagged =
+    f p1 (untag tagged)

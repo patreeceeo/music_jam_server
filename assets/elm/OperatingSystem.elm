@@ -1,10 +1,12 @@
-module OperatingSystem exposing (AppState(..), Model, Msg(..), handleVisibilityChange, init, milisSinceKeyDown, subscriptions, update)
+module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, update)
 
 import Browser.Events
-import Json.Decode as D
 import KbdEvent
 import KbdState
+import Message exposing (Message)
+import Modely
 import PortMessage
+import Selectors
 import Time
 
 
@@ -46,92 +48,47 @@ init screenWidth =
 -- UPDATE
 
 
-type Msg
-    = AnimationFrame Time.Posix
-    | WindowResize Int
-    | KeyDown KbdEvent.Model
-    | KeyUp KbdEvent.Model
-    | ReceivePortMessage PortMessage.RawMessage
-    | VisibilityChange Browser.Events.Visibility
+update : Message -> Model -> Selectors.Selectors -> ( Model, Cmd Message )
+update msg model _ =
+    case ( msg, model.appState ) of
+        ( Message.VisibilityChange status, _ ) ->
+            case status of
+                Browser.Events.Hidden ->
+                    ( { model | appState = AppSleeping }, msgToCmd msg )
+
+                Browser.Events.Visible ->
+                    ( { model | appState = AppActive }, msgToCmd msg )
+
+        ( Message.AnimationFrame newTime, AppActive ) ->
+            ( { model | timeInMillis = Time.posixToMillis newTime }, Cmd.none )
+
+        ( Message.WindowResize width, _ ) ->
+            ( { model | screenWidth = width }, Cmd.none )
+
+        ( Message.KeyDown event, AppActive ) ->
+            let
+                newKeyState =
+                    case KbdState.get event.key model.kbdState of
+                        Just keyState ->
+                            { keyState | lastPressedAt = model.timeInMillis }
+
+                        Nothing ->
+                            { lastPressedAt = model.timeInMillis }
+            in
+            ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
 
 
-handleVisibilityChange : Browser.Events.Visibility -> Model -> ( Model, Cmd a )
-handleVisibilityChange status model =
-    case status of
-        Browser.Events.Hidden ->
-            ( { model | appState = AppSleeping }
-            , PortMessage.send (PortMessage.AppStateChange True)
-            )
+msgToCmd : Message -> Cmd Message
+msgToCmd msg =
+    case msg of
+        Message.VisibilityChange status ->
+            PortMessage.send (PortMessage.AppStateChange (status == Browser.Events.Hidden))
 
-        Browser.Events.Visible ->
-            ( { model | appState = AppActive }
-            , PortMessage.send (PortMessage.AppStateChange False)
-            )
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case model.appState of
-        AppSleeping ->
-            case msg of
-                VisibilityChange status ->
-                    handleVisibilityChange status model
-
-                _ ->
-                    ( model, Cmd.none )
-
-        AppActive ->
-            case msg of
-                AnimationFrame newTime ->
-                    ( { model
-                        | timeInMillis = Time.posixToMillis newTime
-                      }
-                    , Cmd.none
-                    )
-
-                WindowResize width ->
-                    ( { model | screenWidth = width }
-                    , Cmd.none
-                    )
-
-                KeyDown event ->
-                    let
-                        newKeyState =
-                            case KbdState.get event.key model.kbdState of
-                                Just keyState ->
-                                    { keyState | lastPressedAt = model.timeInMillis }
-
-                                Nothing ->
-                                    { lastPressedAt = model.timeInMillis }
-                    in
-                    ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }
-                    , Cmd.none
-                    )
-
-                KeyUp _ ->
-                    ( model, Cmd.none )
-
-                ReceivePortMessage _ ->
-                    ( model, Cmd.none )
-
-                VisibilityChange status ->
-                    handleVisibilityChange status model
-
-
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ Browser.Events.onAnimationFrame AnimationFrame
-        , Browser.Events.onResize (\w _ -> WindowResize w)
-        , Browser.Events.onVisibilityChange VisibilityChange
-        , Browser.Events.onKeyDown (KbdEvent.decode |> D.map KeyDown)
-        , Browser.Events.onKeyUp (KbdEvent.decode |> D.map KeyUp)
-        , PortMessage.receive ReceivePortMessage
-        ]
+        _ ->
+            Cmd.none
 
 
 

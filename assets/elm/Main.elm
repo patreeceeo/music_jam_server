@@ -1,32 +1,26 @@
-module Main exposing (Model, Msg(..), main, update, view)
+module Main exposing (Model, SubModels(..), main, view)
 
 import Browser
+import Browser.Events
 import Html
 import Instrument
 import Json.Decode as D
 import KbdEvent
-import Maybe.Extra
-import MouseEvent
+import Message exposing (Message)
+import Modely
 import OperatingSystem as OS
 import PortMessage
+import Selectors
 import Svg.Attributes exposing (..)
 import UserInterfaces as UIs
-
-
-
--- CONSTANTS
-
-
-mouseOverVoiceVolume : Float
-mouseOverVoiceVolume =
-    0.5
+import Utils
 
 
 
 -- MAIN
 
 
-main : Program D.Value Model Msg
+main : Program D.Value Model Message
 main =
     Browser.element
         { init = init
@@ -46,13 +40,7 @@ type alias Flags =
     }
 
 
-type alias Model =
-    { os : OS.Model
-    , instrument : Maybe Instrument.Model
-    }
-
-
-init : D.Value -> ( Model, Cmd Msg )
+init : D.Value -> ( Model, Cmd Message )
 init flags =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
@@ -77,137 +65,138 @@ decodeFlags =
         (D.field "instrument" Instrument.decoder)
 
 
+type alias Model =
+    { os : OS.Model
+    , instrument : Maybe Instrument.Model
+    }
+
+
+type SubModels
+    = OperatingSystemModel OS.Model
+    | InstrumentModel (Maybe Instrument.Model)
+
+
+getOs : Model -> SubModels
+getOs =
+    Utils.tagReturnWith OperatingSystemModel (\model -> model.os)
+
+
+setOs : SubModels -> Model -> Model
+setOs =
+    Utils.untagP1 untagOs
+        (\maybeOs model ->
+            case maybeOs of
+                Just os ->
+                    { model | os = os }
+
+                Nothing ->
+                    model
+        )
+
+
+untagOs : SubModels -> Maybe OS.Model
+untagOs tagged =
+    case tagged of
+        OperatingSystemModel os ->
+            Just os
+
+        _ ->
+            Nothing
+
+
+mapOs : (Message -> OS.Model -> Selectors.Selectors -> ( OS.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapOs update_ msg taggedModel selectors =
+    case untagOs taggedModel of
+        Just os ->
+            Tuple.mapFirst OperatingSystemModel (update_ msg os selectors)
+
+        Nothing ->
+            ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+
+
+getInstrument : Model -> SubModels
+getInstrument =
+    Utils.tagReturnWith InstrumentModel (\model -> model.instrument)
+
+
+setInstrument : SubModels -> Model -> Model
+setInstrument =
+    Utils.untagP1 untagInstrument (\maybeInstrument model -> { model | instrument = maybeInstrument })
+
+
+untagInstrument : SubModels -> Maybe Instrument.Model
+untagInstrument tagged =
+    case tagged of
+        InstrumentModel ins ->
+            ins
+
+        _ ->
+            Nothing
+
+
+mapInstrument : (Message -> Instrument.Model -> Selectors.Selectors -> ( Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapInstrument update_ msg taggedModel selectors =
+    case untagInstrument taggedModel of
+        Just instrument ->
+            Tuple.mapFirst (\m -> InstrumentModel (Just m)) (update_ msg instrument selectors)
+
+        Nothing ->
+            ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+
+
 
 -- UPDATE
 
 
-type Msg
-    = OSMsg OS.Msg
-    | MouseOverVoice Int MouseEvent.Model
+composers : List (Modely.Composer Message Model SubModels Selectors.Selectors ( SubModels, Cmd Message ))
+composers =
+    [ ( getOs
+      , mapOs OperatingSystem.update
+      , setOs
+      )
+    , ( getInstrument
+      , mapInstrument Instrument.update
+      , setInstrument
+      )
+    ]
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case ( msg, model.instrument ) of
-        ( OSMsg (OS.KeyUp event), Just instrument ) ->
-            let
-                volume =
-                    intensityOfKeyPress model event.key
-
-                default =
-                    ( model, Cmd.none )
-            in
-            voiceIndexForKey event.key
-                |> Maybe.Extra.unwrap default
-                    (\voiceIndex ->
-                        Instrument.noteAt 0 voiceIndex instrument
-                            |> Maybe.Extra.unwrap default
-                                (\pitch ->
-                                    let
-                                        newInstrument =
-                                            Instrument.playNote instrument voiceIndex pitch volume model.os.timeInMillis
-                                    in
-                                    ( { model | instrument = Just newInstrument }
-                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
-                                    )
-                                )
-                    )
-
-        ( MouseOverVoice index event, Just instrument ) ->
-            if event.buttons > 0 then
-                let
-                    pitchResult =
-                        Instrument.pitchAtOffset event.offsetX model.os.screenWidth instrument index
-                in
-                case pitchResult of
-                    Ok pitch ->
-                        ( { model | instrument = Just (Instrument.playNote instrument index pitch mouseOverVoiceVolume model.os.timeInMillis) }
-                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
-                        )
-
-                    Err errMsg ->
-                        ( model, PortMessage.send (PortMessage.LogError errMsg) )
-
-            else
-                ( model, Cmd.none )
-
-        ( OSMsg (OS.ReceivePortMessage rawMsg), Just instrument ) ->
-            case PortMessage.decode rawMsg of
-                Ok playSound ->
-                    ( { model | instrument = Just (Instrument.playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume model.os.timeInMillis) }
-                    , Cmd.none
-                    )
-
-                Err error ->
-                    ( model
-                    , PortMessage.send (PortMessage.LogError (D.errorToString error))
-                    )
-
-        ( OSMsg subMsg, _ ) ->
-            OS.update subMsg model.os
-                |> updateWith (\os -> { model | os = os }) OSMsg
-
-        ( _, Nothing ) ->
-            ( model, Cmd.none )
+bindSelectors : Model -> Selectors.Selectors
+bindSelectors model =
+    { milisSinceKeyDown = \key -> OperatingSystem.milisSinceKeyDown key model.os
+    , timeInMillis = \() -> model.os.timeInMillis
+    , screenWidth = \() -> model.os.screenWidth
+    }
 
 
-updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toModel toMsg ( subModel, subCmd ) =
-    ( toModel subModel
-    , Cmd.map toMsg subCmd
-    )
+update : Message -> Model -> ( Model, Cmd Message )
+update =
+    Modely.compose composers Cmd.batch bindSelectors
 
 
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
+subscriptions : Model -> Sub Message
 subscriptions model =
-    Sub.map OSMsg (OS.subscriptions model.os)
+    Sub.batch
+        [ Browser.Events.onAnimationFrame Message.AnimationFrame
+        , Browser.Events.onResize (\w _ -> Message.WindowResize w)
+        , Browser.Events.onVisibilityChange Message.VisibilityChange
+        , Browser.Events.onKeyDown (KbdEvent.decode |> D.map Message.KeyDown)
+        , Browser.Events.onKeyUp (KbdEvent.decode |> D.map Message.KeyUp)
+        , PortMessage.receive Message.ReceivePortMessage
+        ]
 
 
 
 -- VIEW
 
 
-view : Model -> Html.Html Msg
+view : Model -> Html.Html Message
 view model =
     case model.instrument of
         Just instrument ->
             Html.div []
-                [ UIs.instrument instrument model.os MouseOverVoice
+                [ UIs.instrument instrument model.os Message.MouseOverVoice
                 ]
 
         Nothing ->
             Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
-
-
-voiceIndexForKey : KbdEvent.Key -> Maybe Int
-voiceIndexForKey key =
-    case key of
-        KbdEvent.KeyS ->
-            Just 0
-
-        KbdEvent.KeyD ->
-            Just 1
-
-        KbdEvent.KeyF ->
-            Just 2
-
-        KbdEvent.KeyJ ->
-            Just 3
-
-        KbdEvent.KeyK ->
-            Just 4
-
-        KbdEvent.KeyL ->
-            Just 5
-
-        _ ->
-            Nothing
-
-
-intensityOfKeyPress : Model -> KbdEvent.Key -> Float
-intensityOfKeyPress model key =
-    Basics.min 100 (toFloat (OS.milisSinceKeyDown key model.os) / 100)

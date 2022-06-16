@@ -24,7 +24,8 @@ type Msg
     | Foo
 
 
-type alias Selectors = { aPlus: Int -> Int }
+type alias Selectors =
+    { aPlus : Int -> Int }
 
 
 batchCmds : List String -> String
@@ -42,9 +43,9 @@ subUpdate msg subModel selectors =
 
 
 bindSelectors : Model -> Selectors
-bindSelectors model = {
-  aPlus = \x -> model.subA.count + x
-  }
+bindSelectors model =
+    { aPlus = \x -> model.subA.count + x
+    }
 
 
 testCompose : List Test

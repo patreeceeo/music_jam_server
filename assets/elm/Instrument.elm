@@ -1,9 +1,22 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, noteAt, pitchAtOffset, playNote, setCurrentPitch, setCurrentVolume, width)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, update, width)
 
 import Array exposing (Array)
 import Json.Decode as D
+import KbdEvent
 import Maybe.Extra
+import Message exposing (Message)
+import PortMessage
+import Selectors
 import Svg.Attributes exposing (..)
+
+
+
+-- CONSTANTS
+
+
+mouseOverVoiceVolume : Float
+mouseOverVoiceVolume =
+    0.5
 
 
 
@@ -132,6 +145,74 @@ decodeInstrumentVoices =
 -- UPDATE
 
 
+update : Message -> Model -> Selectors.Selectors -> ( Model, Cmd Message )
+update msg instrument select =
+    let
+        timeInMillis =
+            select.timeInMillis ()
+    in
+    case msg of
+        Message.KeyUp event ->
+            let
+                milisSinceKeyDown =
+                    select.milisSinceKeyDown event.key
+
+                volume =
+                    intensityOfKeyPress milisSinceKeyDown
+
+                default =
+                    ( instrument, Cmd.none )
+            in
+            voiceIndexForKey event.key
+                |> Maybe.Extra.unwrap default
+                    (\voiceIndex ->
+                        noteAt 0 voiceIndex instrument
+                            |> Maybe.Extra.unwrap default
+                                (\pitch ->
+                                    ( playNote instrument voiceIndex pitch volume timeInMillis
+                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                                    )
+                                )
+                    )
+
+        Message.MouseOverVoice index event ->
+            let
+                screenWidth =
+                    select.screenWidth ()
+            in
+            if event.buttons > 0 then
+                let
+                    pitchResult =
+                        pitchAtOffset event.offsetX screenWidth instrument index
+                in
+                case pitchResult of
+                    Ok pitch ->
+                        ( playNote instrument index pitch mouseOverVoiceVolume timeInMillis
+                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
+                        )
+
+                    Err errMsg ->
+                        ( instrument, PortMessage.send (PortMessage.LogError errMsg) )
+
+            else
+                ( instrument, Cmd.none )
+
+        Message.ReceivePortMessage rawMsg ->
+            case PortMessage.decode rawMsg of
+                Ok playSound ->
+                    ( playNote instrument playSound.data.voiceIndex playSound.data.pitch playSound.data.volume timeInMillis
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( instrument
+                    , PortMessage.send (PortMessage.LogError (D.errorToString error))
+                    )
+
+        _ ->
+            ( instrument, Cmd.none )
+
+
 pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float
 pitchAtOffset offset screenWidth instrument voiceIndex =
     let
@@ -224,3 +305,33 @@ noteAt : Int -> Int -> Model -> Maybe Float
 noteAt noteIndex voiceIndex model =
     voiceAt voiceIndex model
         |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
+
+
+voiceIndexForKey : KbdEvent.Key -> Maybe Int
+voiceIndexForKey key =
+    case key of
+        KbdEvent.KeyS ->
+            Just 0
+
+        KbdEvent.KeyD ->
+            Just 1
+
+        KbdEvent.KeyF ->
+            Just 2
+
+        KbdEvent.KeyJ ->
+            Just 3
+
+        KbdEvent.KeyK ->
+            Just 4
+
+        KbdEvent.KeyL ->
+            Just 5
+
+        _ ->
+            Nothing
+
+
+intensityOfKeyPress : Int -> Float
+intensityOfKeyPress milisSinceKeyDown =
+    Basics.min 100 (toFloat milisSinceKeyDown / 100)
