@@ -12,7 +12,7 @@ defmodule MusicJamServerWeb.RoomChannelTest do
 
   test "broadcasts instrument updates to room:{id}", %{socket: socket} do
     msgBody = %{"pitch" => 32, "soundId" => "didgeridoo", "voiceIndex" => 0, "volume" => 1.2}
-    push(socket, "playSound", msgBody)
-    assert_broadcast "playSound", msgBbody
+    push(socket, "playNote", msgBody)
+    assert_broadcast "playNote", msgBbody
   end
 end

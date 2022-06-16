@@ -4,7 +4,6 @@ import Browser.Events
 import KbdEvent
 import KbdState
 import Message exposing (Message)
-import Modely
 import PortMessage
 import Selectors
 import Time

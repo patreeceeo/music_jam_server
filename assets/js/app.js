@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     elmApp.ports.outbox.subscribe((msg) => {
       switch(msg.type) {
-        case "playSound":
+        case "playNote":
           pushUpdate(msg.data)
           break;
         case "logError":
@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.connect()
 
     function pushUpdate(event) {
-      channel.push("playSound", event)
+      channel.push("playNote", event)
     }
 
     function downListener(event) {
@@ -114,11 +114,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     const voiceInfo = {};
-    channel.on("playSound", (event) => {
+    channel.on("playNote", (event) => {
       if(event.volume > 0 && !sleeping) {
         playGuiar(event.pitch, 5, event.volume)
         elmApp.ports.inbox.send({
-          type: "playSound",
+          type: "playNote",
           data: event
         })
       }
