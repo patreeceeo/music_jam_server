@@ -2,9 +2,10 @@ module Tests exposing (..)
 
 import Array
 import Expect
-import Instrument exposing (init, initVoice, fretDistance, fretIndex, pitchAtOffset, setCurrentPitch)
+import Instrument exposing (fretDistance, fretIndex, init, initVoice, pitchAtOffset, setCurrentPitch, setCurrentVolume)
 import Json.Encode as Encode
 import Main exposing (Model, update, view)
+import Message
 import MouseEvent
 import OperatingSystem as OS
 import PortMessage
@@ -14,8 +15,6 @@ import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 import UserInterfaces as UI
 import Utils exposing (PathSegment)
-import Instrument exposing (setCurrentVolume)
-import Message
 
 
 
