@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, update, width)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
 
 import Array exposing (Array)
 import Json.Decode as D

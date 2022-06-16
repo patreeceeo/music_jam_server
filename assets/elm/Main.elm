@@ -1,4 +1,4 @@
-module Main exposing (Model, SubModels(..), main, view)
+module Main exposing (Model, SubModels(..), main, update, view)
 
 import Browser
 import Browser.Events
@@ -151,7 +151,7 @@ mapInstrument update_ msg taggedModel selectors =
 composers : List (Modely.Composer Message Model SubModels Selectors.Selectors ( SubModels, Cmd Message ))
 composers =
     [ ( getOs
-      , mapOs OperatingSystem.update
+      , mapOs OS.update
       , setOs
       )
     , ( getInstrument
@@ -163,7 +163,7 @@ composers =
 
 bindSelectors : Model -> Selectors.Selectors
 bindSelectors model =
-    { milisSinceKeyDown = \key -> OperatingSystem.milisSinceKeyDown key model.os
+    { milisSinceKeyDown = \key -> OS.milisSinceKeyDown key model.os
     , timeInMillis = \() -> model.os.timeInMillis
     , screenWidth = \() -> model.os.screenWidth
     }

@@ -15,6 +15,7 @@ import Test.Html.Selector as Selector
 import UserInterfaces as UI
 import Utils exposing (PathSegment)
 import Instrument exposing (setCurrentVolume)
+import Message
 
 
 
@@ -115,7 +116,7 @@ suite =
                             MouseEvent.create 500 0 1
 
                         mouseOverVoiceMsg =
-                            Main.MouseOverVoice 1 mouseEvent
+                            Message.MouseOverVoice 1 mouseEvent
                     in
                     view (wrapInstrument instrument)
                         |> Query.fromHtml
@@ -142,7 +143,7 @@ suite =
                             MouseEvent.create 500 0 1
 
                         ( updatedModel, _ ) =
-                            update (Main.MouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
+                            update (Message.MouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
@@ -172,7 +173,7 @@ suite =
                             MouseEvent.create 500 0 1
 
                         ( _, playSoundCmd ) =
-                            update (Main.MouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
+                            update (Message.MouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
 
                         getPitchResult =
                             pitchAtOffset 500 1000 instrument 1
