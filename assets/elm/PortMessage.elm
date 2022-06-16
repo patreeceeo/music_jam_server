@@ -9,15 +9,15 @@ type alias RawMessage =
 
 
 type alias MessageRecord =
-    { type_ : String, data : PlayNoteRecord }
+    { type_ : String, data : PlaySoundRecord }
 
 
-type alias PlayNoteRecord =
+type alias PlaySoundRecord =
     { soundId : String, voiceIndex : Int, pitch : Float, volume : Float }
 
 
 type Message
-    = PlayNote PlayNoteRecord
+    = PlaySound PlaySoundRecord
     | LogError String
     | AppStateChange Bool
 
@@ -41,9 +41,9 @@ receive receiver =
 encode : Message -> E.Value
 encode msg =
     case msg of
-        PlayNote data ->
+        PlaySound data ->
             E.object
-                [ ( "type", E.string "playNote" )
+                [ ( "type", E.string "playSound" )
                 , ( "data"
                   , E.object
                         [ ( "soundId", E.string data.soundId )
@@ -87,23 +87,23 @@ decoder =
 decoder_byType : String -> D.Decoder MessageRecord
 decoder_byType type_ =
     case type_ of
-        "playNote" ->
-            decoder_playNote
+        "playSound" ->
+            decoder_playSound
 
         _ ->
             D.fail ("unhandled message type " ++ type_)
 
 
-decoder_playNote : D.Decoder MessageRecord
-decoder_playNote =
+decoder_playSound : D.Decoder MessageRecord
+decoder_playSound =
     D.map2 MessageRecord
         (D.field "type" D.string)
-        (D.field "data" decoder_playNoteData)
+        (D.field "data" decoder_playSoundData)
 
 
-decoder_playNoteData : D.Decoder PlayNoteRecord
-decoder_playNoteData =
-    D.map4 PlayNoteRecord
+decoder_playSoundData : D.Decoder PlaySoundRecord
+decoder_playSoundData =
+    D.map4 PlaySoundRecord
         (D.field "soundId" D.string)
         (D.field "voiceIndex" D.int)
         (D.field "pitch" D.float)

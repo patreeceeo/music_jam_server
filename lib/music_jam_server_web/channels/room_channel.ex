@@ -10,10 +10,10 @@ defmodule MusicJamServerWeb.RoomChannel do
     {:error, %{reason: "unauthorized"}}
   end
 
-  def handle_in("playNote", payload, socket) do
+  def handle_in("playSound", payload, socket) do
     %{"pitch" => pitch, "soundId" => _, "voiceIndex" => voiceIndex, "volume" => volume} = payload
-    Logger.info("playNote {pitch: #{pitch}, voiceIndex: #{voiceIndex}, volume: #{volume}}")
-    broadcast_from!(socket, "playNote", payload)
+    Logger.info("playSound {pitch: #{pitch}, voiceIndex: #{voiceIndex}, volume: #{volume}}")
+    broadcast_from!(socket, "playSound", payload)
     {:noreply, socket}
   end
 end

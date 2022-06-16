@@ -1,7 +1,7 @@
-type ElmMsg = PlayNoteElmMsg | LogErrorElmMsg
+type ElmMsg = PlaySoundElmMsg | LogErrorElmMsg
 
-interface PlayNoteElmMsg {
-  type: "playNote"
+interface PlaySoundElmMsg {
+  type: "playSound"
   data: {
     pitch: number, voiceIndex: number, soundId: string, volume: number
   }

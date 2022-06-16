@@ -170,7 +170,7 @@ update msg instrument select =
                             |> Maybe.Extra.unwrap default
                                 (\pitch ->
                                     ( playNote instrument voiceIndex pitch volume timeInMillis
-                                    , PortMessage.send (PortMessage.PlayNote { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+                                    , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
                                     )
                                 )
                     )
@@ -188,7 +188,7 @@ update msg instrument select =
                 case pitchResult of
                     Ok pitch ->
                         ( playNote instrument index pitch mouseOverVoiceVolume timeInMillis
-                        , PortMessage.send (PortMessage.PlayNote { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
+                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
                         )
 
                     Err errMsg ->
