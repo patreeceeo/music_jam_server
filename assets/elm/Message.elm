@@ -5,6 +5,7 @@ import KbdEvent
 import MouseEvent
 import PortMessage
 import Time
+import CommonTypes exposing (Volume)
 
 
 type Message
@@ -15,3 +16,4 @@ type Message
     | KeyUp KbdEvent.Model
     | ReceivePortMessage PortMessage.RawMessage
     | VisibilityChange Browser.Events.Visibility
+    | PlayChord Volume

@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width, mapActiveChord, setActiveChord, messagesForMappedChord)
 
 import Array exposing (Array)
 import Json.Decode as D
@@ -9,6 +9,7 @@ import Message exposing (Message)
 import PortMessage
 import Selectors
 import Svg.Attributes exposing (..)
+import CommonTypes exposing (Pitch, Volume, QTime, NoteVIndex)
 
 
 
@@ -44,36 +45,6 @@ decodeInstrumentVoices =
 
 
 -- MODEL
-{- Note representation which corresponds to the visual presentation of the instrument, e.g. which number fret on a guitar's fretboard. -}
-
-
-type alias NoteVIndex =
-    Int
-
-
-
-{- The pitch (frequency) of a note (TODO what unit?) -}
-
-
-type alias Pitch =
-    Float
-
-
-
-{- Decibles? -}
-
-
-type alias Volume =
-    Float
-
-
-
-{- Time measured in whole numbers, normally milliseconds -}
-
-
-type alias QTime =
-    Int
-
 
 type alias Voice =
     { currentPitch : Pitch
@@ -248,6 +219,8 @@ update msg instrument select =
             select.timeInMillis ()
     in
     case msg of
+        Message.PlayChord volume ->
+            handlePlayChord volume timeInMillis instrument
         Message.KeyUp event ->
             let
                 milisSinceKeyDown =
@@ -256,30 +229,15 @@ update msg instrument select =
                 volume =
                     intensityOfKeyPress milisSinceKeyDown
 
-                default =
-                    ( instrument, Cmd.none )
             in
             case event.key of
                 KbdEvent.KeySpace ->
-                    let
-                        -- TODO update once chord selector UI is working
-                        chord =
-                            List.map (\_ -> Just 0) (List.range 0 5)
-
-                        withChord =
-                            setActiveChord chord instrument
-
-                        mChord =
-                            mapActiveChord instrument
-
-                        messages =
-                            messagesForMappedChord mChord volume
-                    in
-                    ( playMappedChord mChord volume timeInMillis withChord
-                    , Cmd.batch (List.map (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
-                    )
-
+                    handlePlayChord volume timeInMillis instrument
                 _ ->
+                  let
+                    default =
+                      ( instrument, Cmd.none )
+                  in
                     voiceIndexForKey event.key
                         |> Maybe.Extra.unwrap default
                             (\voiceIndex ->
@@ -329,6 +287,26 @@ update msg instrument select =
         _ ->
             ( instrument, Cmd.none )
 
+handlePlayChord : Volume -> QTime -> Model -> (Model, Cmd Message)
+handlePlayChord volume when instrument =
+  let
+
+      chord =
+          List.map (\_ -> Just 0) (List.range 0 5)
+
+      withChord =
+          setActiveChord chord instrument
+
+      mChord =
+          mapActiveChord instrument
+
+      messages =
+          messagesForMappedChord mChord volume
+
+  in
+  ( playMappedChord mChord volume when withChord
+  , Cmd.batch (List.map (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
+  )
 
 pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float
 pitchAtOffset offset screenWidth instrument voiceIndex =
