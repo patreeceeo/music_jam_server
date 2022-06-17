@@ -1,4 +1,4 @@
-port module PortMessage exposing (Message(..), RawMessage, decode, encode, receive, send)
+port module PortMessage exposing (Message(..), PlaySoundRecord, RawMessage, decode, encode, receive, send)
 
 import Json.Decode as D
 import Json.Encode as E

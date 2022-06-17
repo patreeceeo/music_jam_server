@@ -25,6 +25,7 @@ keyOrder =
     , KeyJ
     , KeyK
     , KeyL
+    , KeySpace
     ]
 
 

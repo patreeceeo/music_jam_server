@@ -13,6 +13,7 @@ type Key
     | KeyJ
     | KeyK
     | KeyL
+    | KeySpace
 
 
 type alias Model =
@@ -66,6 +67,9 @@ keyFromString str =
 
         "KeyL" ->
             D.succeed KeyL
+
+        "Space" ->
+            D.succeed KeySpace
 
         _ ->
             D.fail ("invalid key code " ++ str)

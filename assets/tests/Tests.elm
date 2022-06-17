@@ -46,7 +46,7 @@ wrapInstrument instrument =
 
 suite : Test
 suite =
-    describe "Instrument module"
+    describe "Everything everywhere all at once"
         [ describe "fret placement" fretPlacementTests
         , test "setCurrentPitch" <|
             \_ ->
@@ -68,6 +68,7 @@ suite =
                 in
                 Expect.equal
                     { voices = Array.fromList [ voice1, modifiedVoice2, voice3 ]
+                    , activeChord = []
                     }
                     (setCurrentPitch 42 1 instrument)
         , test "getPitchFromOffset" <|
@@ -153,35 +154,29 @@ suite =
 
                         Err errMsg ->
                             Expect.fail errMsg
-               , todo "send port message"
+            , todo "send port message"
+
             -- , test "send port message" <|
             --     \_ ->
             --         let
             --             voice1 =
             --                 initVoice (List.map toFloat (List.range 0 24))
-
             --             voice2 =
             --                 initVoice (List.map toFloat (List.range 0 24))
-
             --             voice3 =
             --                 initVoice (List.map toFloat (List.range 0 24))
-
             --             instrument =
             --                 init [ voice1, voice2, voice3 ]
-
             --             mouseEvent =
             --                 MouseEvent.create 500 0 1
-
             --             ( _, playSoundCmd ) =
             --                 update (Message.MouseOverVoice 1 mouseEvent) (wrapInstrument instrument)
-
             --             getPitchResult =
             --                 pitchAtOffset 500 1000 instrument 1
             --         in
             --         case getPitchResult of
             --             Ok pitch ->
             --                 Expect.equal playSoundCmd (PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = 1, pitch = pitch, volume = 0.5 }))
-
             --             Err errMsg ->
             --                 Expect.fail errMsg
             ]

@@ -75,6 +75,8 @@ type SubModels
     = OperatingSystemModel OS.Model
     | InstrumentModel (Maybe Instrument.Model)
 
+
+
 -- UPDATE
 
 
@@ -91,7 +93,8 @@ composers =
     ]
 
 
-{-| Create functions that can be used in subModel update functions to access other parts of the model -}
+{-| Create functions that can be used in subModel update functions to access other parts of the model
+-}
 bindSelectors : Model -> Selectors.Selectors
 bindSelectors model =
     { milisSinceKeyDown = \key -> OS.milisSinceKeyDown key model.os
@@ -104,18 +107,24 @@ update : Message -> Model -> ( Model, Cmd Message )
 update =
     Modely.compose composers Cmd.batch bindSelectors
 
+
+
 -- UPDATE getters
+
 
 getOs : Model -> SubModels
 getOs =
     Utils.tagReturnWith OperatingSystemModel (\model -> model.os)
+
 
 getInstrument : Model -> SubModels
 getInstrument =
     Utils.tagReturnWith InstrumentModel (\model -> model.instrument)
 
 
+
 -- UPDATE setters
+
 
 setOs : SubModels -> Model -> Model
 setOs =
@@ -129,17 +138,19 @@ setOs =
                     model
         )
 
+
 setInstrument : SubModels -> Model -> Model
 setInstrument =
     Utils.untagP1 untagInstrument (\maybeInstrument model -> { model | instrument = maybeInstrument })
 
 
+
 {- UPDATE untaggers
-Take a tagged subModel and attempt to return the subModel itself
-E.g.
-SubModel = CheeseSubModel Cheese | ...
-tagged = CheeseSubModel cheese
-maybeCheese = untagCheese tagged
+   Take a tagged subModel and attempt to return the subModel itself
+   E.g.
+   SubModel = CheeseSubModel Cheese | ...
+   tagged = CheeseSubModel cheese
+   maybeCheese = untagCheese tagged
 -}
 
 
@@ -152,6 +163,7 @@ untagOs tagged =
         _ ->
             Nothing
 
+
 untagInstrument : SubModels -> Maybe Instrument.Model
 untagInstrument tagged =
     case tagged of
@@ -161,15 +173,18 @@ untagInstrument tagged =
         _ ->
             Nothing
 
+
+
 {- UPDATE mappers
 
-Take the update function for a submodel and return a function that will attempt to untag its model argument and tag the model in the return value.
-E.g.
-SubModel = CheeseSubModel Cheese | ...
-updateCheese = Cheese -> Msg -> (Cheese, Cmd Msg)
-updateCheeseMapped = SubModel -> Msg -> (SubModel, Cmd Msg)
+   Take the update function for a submodel and return a function that will attempt to untag its model argument and tag the model in the return value.
+   E.g.
+   SubModel = CheeseSubModel Cheese | ...
+   updateCheese = Cheese -> Msg -> (Cheese, Cmd Msg)
+   updateCheeseMapped = SubModel -> Msg -> (SubModel, Cmd Msg)
 
 -}
+
 
 mapOs : (Message -> OS.Model -> Selectors.Selectors -> ( OS.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
 mapOs update_ msg taggedModel selectors =
@@ -179,6 +194,7 @@ mapOs update_ msg taggedModel selectors =
 
         Nothing ->
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+
 
 mapInstrument : (Message -> Instrument.Model -> Selectors.Selectors -> ( Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
 mapInstrument update_ msg taggedModel selectors =
@@ -190,7 +206,9 @@ mapInstrument update_ msg taggedModel selectors =
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
 
 
+
 -- SUBS
+
 
 subscriptions : Model -> Sub Message
 subscriptions model =
