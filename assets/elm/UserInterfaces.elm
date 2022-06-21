@@ -2,15 +2,15 @@ module UserInterfaces exposing (instrument, viewStringAnimationValues)
 
 import Array
 import Html
+import Html.Events
 import Instrument
+import Message
 import MouseEvent
 import OperatingSystem as OS
 import Svg
 import Svg.Attributes as SvgA
 import Svg.Events
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
-import Html.Events
-import Message
 
 
 viewBox : String
@@ -20,22 +20,22 @@ viewBox =
 
 instrument : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> Message.Message) -> Html.Html Message.Message
 instrument instrumentModel osModel msgForMouseOver =
-    Html.div [] [
-    Svg.svg
-        [ SvgA.class "instrument"
-        , SvgA.preserveAspectRatio "xMidYMid meet"
-        , SvgA.viewBox viewBox
+    Html.div []
+        [ Svg.svg
+            [ SvgA.class "instrument"
+            , SvgA.preserveAspectRatio "xMidYMid meet"
+            , SvgA.viewBox viewBox
+            ]
+            ([ svgDefs
+             , outerPoly
+             , frets
+             ]
+                ++ viewInlays
+                ++ viewStrings instrumentModel osModel msgForMouseOver
+                ++ viewDebugging instrumentModel
+            )
+        , controls
         ]
-        ([ svgDefs
-         , outerPoly
-         , frets
-         ]
-            ++ viewInlays
-            ++ viewStrings instrumentModel osModel msgForMouseOver
-            ++ viewDebugging instrumentModel
-        )
-      , controls
-    ]
 
 
 instShadowH : Float
@@ -363,8 +363,10 @@ onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
 onMouseOver event =
     Svg.Events.on "mouseover" (MouseEvent.mapDecode event)
 
+
 controls : Html.Html Message.Message
 controls =
-    Html.button [
-      Html.Events.onClick (Message.PlayChord 0.5)
-    ] [ Html.text "strum" ]
+    Html.button
+        [ Html.Events.onClick (Message.PlayChord 0.5)
+        ]
+        [ Html.text "strum" ]
