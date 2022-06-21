@@ -1,11 +1,11 @@
 module Message exposing (Message(..))
 
 import Browser.Events
+import CommonTypes exposing (Volume)
 import KbdEvent
 import MouseEvent
 import PortMessage
 import Time
-import CommonTypes exposing (Volume)
 
 
 type Message

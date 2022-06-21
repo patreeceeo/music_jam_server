@@ -1,4 +1,5 @@
 module CommonTypes exposing (..)
+
 {- Note representation which corresponds to the visual presentation of the instrument, e.g. which number fret on a guitar's fretboard. -}
 
 
@@ -28,4 +29,3 @@ type alias Volume =
 
 type alias QTime =
     Int
-

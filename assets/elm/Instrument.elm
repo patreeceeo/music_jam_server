@@ -1,6 +1,7 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width, mapActiveChord, setActiveChord, messagesForMappedChord)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
 
 import Array exposing (Array)
+import CommonTypes exposing (NoteVIndex, Pitch, QTime, Volume)
 import Json.Decode as D
 import KbdEvent
 import List.Extra
@@ -9,7 +10,6 @@ import Message exposing (Message)
 import PortMessage
 import Selectors
 import Svg.Attributes exposing (..)
-import CommonTypes exposing (Pitch, Volume, QTime, NoteVIndex)
 
 
 
@@ -45,6 +45,7 @@ decodeInstrumentVoices =
 
 
 -- MODEL
+
 
 type alias Voice =
     { currentPitch : Pitch
@@ -221,6 +222,7 @@ update msg instrument select =
     case msg of
         Message.PlayChord volume ->
             handlePlayChord volume timeInMillis instrument
+
         Message.KeyUp event ->
             let
                 milisSinceKeyDown =
@@ -228,16 +230,16 @@ update msg instrument select =
 
                 volume =
                     intensityOfKeyPress milisSinceKeyDown
-
             in
             case event.key of
                 KbdEvent.KeySpace ->
                     handlePlayChord volume timeInMillis instrument
+
                 _ ->
-                  let
-                    default =
-                      ( instrument, Cmd.none )
-                  in
+                    let
+                        default =
+                            ( instrument, Cmd.none )
+                    in
                     voiceIndexForKey event.key
                         |> Maybe.Extra.unwrap default
                             (\voiceIndex ->
@@ -287,26 +289,26 @@ update msg instrument select =
         _ ->
             ( instrument, Cmd.none )
 
-handlePlayChord : Volume -> QTime -> Model -> (Model, Cmd Message)
+
+handlePlayChord : Volume -> QTime -> Model -> ( Model, Cmd Message )
 handlePlayChord volume when instrument =
-  let
+    let
+        chord =
+            List.map (\_ -> Just 0) (List.range 0 5)
 
-      chord =
-          List.map (\_ -> Just 0) (List.range 0 5)
+        withChord =
+            setActiveChord chord instrument
 
-      withChord =
-          setActiveChord chord instrument
+        mChord =
+            mapActiveChord instrument
 
-      mChord =
-          mapActiveChord instrument
+        messages =
+            messagesForMappedChord mChord volume
+    in
+    ( playMappedChord mChord volume when withChord
+    , Cmd.batch (List.map (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
+    )
 
-      messages =
-          messagesForMappedChord mChord volume
-
-  in
-  ( playMappedChord mChord volume when withChord
-  , Cmd.batch (List.map (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
-  )
 
 pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float
 pitchAtOffset offset screenWidth instrument voiceIndex =
