@@ -277,9 +277,14 @@ update msg instrument select =
         Message.ReceivePortMessage rawMsg ->
             case PortMessage.decode rawMsg of
                 Ok playSound ->
-                    ( playNote playSound.data.voiceIndex playSound.data.pitch playSound.data.volume timeInMillis instrument
-                    , Cmd.none
-                    )
+                    case playSound.data of
+                        PortMessage.PlaySound data ->
+                            ( playNote data.voiceIndex data.pitch data.volume timeInMillis instrument
+                            , Cmd.none
+                            )
+
+                        _ ->
+                            ( instrument, Cmd.none )
 
                 Err error ->
                     ( instrument

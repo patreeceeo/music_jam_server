@@ -8,8 +8,8 @@ type alias RawMessage =
     E.Value
 
 
-type alias MessageRecord =
-    { type_ : String, data : PlaySoundRecord }
+type alias ParsedMessage =
+    { type_ : String, data : Message }
 
 
 type alias PlaySoundRecord =
@@ -73,18 +73,18 @@ encode msg =
                 ]
 
 
-decode : RawMessage -> Result D.Error MessageRecord
+decode : RawMessage -> Result D.Error ParsedMessage
 decode raw =
     D.decodeValue decoder raw
 
 
-decoder : D.Decoder MessageRecord
+decoder : D.Decoder ParsedMessage
 decoder =
     D.at [ "type" ] D.string
         |> D.andThen decoder_byType
 
 
-decoder_byType : String -> D.Decoder MessageRecord
+decoder_byType : String -> D.Decoder ParsedMessage
 decoder_byType type_ =
     case type_ of
         "playSound" ->
@@ -94,17 +94,19 @@ decoder_byType type_ =
             D.fail ("unhandled message type " ++ type_)
 
 
-decoder_playSound : D.Decoder MessageRecord
+decoder_playSound : D.Decoder ParsedMessage
 decoder_playSound =
-    D.map2 MessageRecord
+    D.map2 ParsedMessage
         (D.field "type" D.string)
         (D.field "data" decoder_playSoundData)
 
 
-decoder_playSoundData : D.Decoder PlaySoundRecord
+decoder_playSoundData : D.Decoder Message
 decoder_playSoundData =
-    D.map4 PlaySoundRecord
-        (D.field "soundId" D.string)
-        (D.field "voiceIndex" D.int)
-        (D.field "pitch" D.float)
-        (D.field "volume" D.float)
+    D.map PlaySound
+        (D.map4 PlaySoundRecord
+            (D.field "soundId" D.string)
+            (D.field "voiceIndex" D.int)
+            (D.field "pitch" D.float)
+            (D.field "volume" D.float)
+        )

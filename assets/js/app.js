@@ -46,6 +46,7 @@ function $(selector) {
   return Array.prototype.slice.apply(document.querySelectorAll(selector))
 }
 
+
 document.addEventListener("DOMContentLoaded", () => {
   topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
   topbar.show()
@@ -79,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
       }
     })
+
 
     function playNote(gain, preset, pitch, duration, volume) {
       player.playNote(audioContext, gain, preset, pitch, duration, volume);

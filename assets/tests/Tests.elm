@@ -8,7 +8,6 @@ import Main exposing (Model, update, view)
 import Message
 import MouseEvent
 import OperatingSystem as OS
-import PortMessage
 import Test exposing (..)
 import Test.Html.Event as Event
 import Test.Html.Query as Query
@@ -118,11 +117,15 @@ suite =
                         mouseOverVoiceMsg =
                             Message.MouseOverVoice 1 mouseEvent
                     in
-                    view (wrapInstrument instrument)
-                        |> Query.fromHtml
-                        |> Query.find [ Selector.id "instrument-voice-1" ]
-                        |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
-                        |> Event.expect mouseOverVoiceMsg
+                    case List.head (view (wrapInstrument instrument)).body of
+                      Just fretboardHtml ->
+                        fretboardHtml
+                          |> Query.fromHtml
+                          |> Query.find [ Selector.id "instrument-voice-1" ]
+                          |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
+                          |> Event.expect mouseOverVoiceMsg
+                      Nothing ->
+                          Expect.fail "body is empty!"
             , test "update model" <|
                 \_ ->
                     -- TODO this test needs to be broken up?

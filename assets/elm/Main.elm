@@ -2,6 +2,7 @@ module Main exposing (Model, SubModels(..), main, update, view)
 
 import Browser
 import Browser.Events
+import Browser.Navigation
 import Html
 import Instrument
 import Json.Decode as D
@@ -12,6 +13,7 @@ import OperatingSystem as OS
 import PortMessage
 import Selectors
 import Svg.Attributes exposing (..)
+import Url exposing (Url)
 import UserInterfaces as UIs
 import Utils
 
@@ -22,11 +24,13 @@ import Utils
 
 main : Program D.Value Model Message
 main =
-    Browser.element
+    Browser.application
         { init = init
         , view = view
         , update = update
         , subscriptions = subscriptions
+        , onUrlRequest = Message.UrlRequest
+        , onUrlChange = Message.UrlChange
         }
 
 
@@ -40,8 +44,8 @@ type alias Flags =
     }
 
 
-init : D.Value -> ( Model, Cmd Message )
-init flags =
+init : D.Value -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
+init flags url key =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
             ( { os = OS.init decodedFlags.screenWidth
@@ -226,13 +230,21 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Html.Html Message
+view : Model -> Browser.Document Message.Message
 view model =
+    { title = "Loopy Fruits MOIP"
+    , body = body model
+    }
+
+
+body : Model -> List (Html.Html Message.Message)
+body model =
     case model.instrument of
         Just instrument ->
-            Html.div []
+            [ Html.div []
                 [ UIs.instrument instrument model.os Message.MouseOverVoice
                 ]
+            ]
 
         Nothing ->
-            Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
+            [ Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ] ]

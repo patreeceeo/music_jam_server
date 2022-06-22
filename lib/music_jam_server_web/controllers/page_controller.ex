@@ -8,4 +8,8 @@ defmodule MusicJamServerWeb.PageController do
   def show_fretboard(conn, _params) do
     render(conn, "fretboard.html", %{fretboard: MusicJamServer.Insts.Fretboard})
   end
+
+  def show_faq(conn, _params) do
+    render(conn, "faq.html")
+  end
 end
