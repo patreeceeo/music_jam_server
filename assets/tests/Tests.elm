@@ -118,14 +118,15 @@ suite =
                             Message.MouseOverVoice 1 mouseEvent
                     in
                     case List.head (view (wrapInstrument instrument)).body of
-                      Just fretboardHtml ->
-                        fretboardHtml
-                          |> Query.fromHtml
-                          |> Query.find [ Selector.id "instrument-voice-1" ]
-                          |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
-                          |> Event.expect mouseOverVoiceMsg
-                      Nothing ->
-                          Expect.fail "body is empty!"
+                        Just fretboardHtml ->
+                            fretboardHtml
+                                |> Query.fromHtml
+                                |> Query.find [ Selector.id "instrument-voice-1" ]
+                                |> Event.simulate (Event.custom "mouseover" simulatedEventObject)
+                                |> Event.expect mouseOverVoiceMsg
+
+                        Nothing ->
+                            Expect.fail "body is empty!"
             , test "update model" <|
                 \_ ->
                     -- TODO this test needs to be broken up?
