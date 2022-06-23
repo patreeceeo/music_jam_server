@@ -1,16 +1,12 @@
 module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, update)
 
-import Browser
 import Browser.Events
-import Browser.Navigation
 import KbdEvent
 import KbdState
 import Message exposing (Message)
 import PortMessage
 import Selectors
 import Time
-import Url exposing (Url)
-import Url.Parser
 
 
 {-| Foundational bits and bytes that encapsulate and abstract the host system i.e. Web browser
@@ -36,19 +32,15 @@ type alias Model =
     , timeInMillis : Int
     , screenWidth : Int
     , kbdState : KbdState.Model
-    , currentRoute : Maybe Routes
-    , navKey : Browser.Navigation.Key
     }
 
 
-init : Int -> Url -> Browser.Navigation.Key -> Model
-init screenWidth url navKey =
+init : Int -> Model
+init screenWidth =
     { appState = AppActive
     , timeInMillis = 0
     , kbdState = KbdState.init
     , screenWidth = screenWidth
-    , currentRoute = urlToRoute url
-    , navKey = navKey
     }
 
 
@@ -94,27 +86,10 @@ update msg model _ =
 
 
 msgToCmd : Message -> Model -> Cmd Message
-msgToCmd msg model =
+msgToCmd msg _ =
     case msg of
         Message.VisibilityChange status ->
             PortMessage.send (PortMessage.AppStateChange (status == Browser.Events.Hidden))
-
-        Message.UrlRequest req ->
-            case req of
-                Browser.Internal url ->
-                    let
-                        urlString =
-                            Url.toString url
-                    in
-                    case urlToRoute url of
-                        Just Faq ->
-                            Browser.Navigation.load urlString
-
-                        _ ->
-                            Browser.Navigation.pushUrl model.navKey urlString
-
-                Browser.External href ->
-                    Browser.Navigation.load href
 
         _ ->
             Cmd.none
@@ -134,19 +109,3 @@ milisSinceKeyDown key model =
             0
 
 
-type Routes
-    = Faq
-    | Main
-
-
-routeParser : Url.Parser.Parser (Routes -> a) a
-routeParser =
-    Url.Parser.oneOf
-        [ Url.Parser.map Faq (Url.Parser.s "faq")
-        , Url.Parser.map Main (Url.Parser.s "lab/fretboard")
-        ]
-
-
-urlToRoute : Url -> Maybe Routes
-urlToRoute url =
-    Url.Parser.parse routeParser url
