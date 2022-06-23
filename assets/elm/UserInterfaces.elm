@@ -1,14 +1,15 @@
-module UserInterfaces exposing (instrument, viewStringAnimationValues)
+module UserInterfaces exposing (instrument, navMenu, viewStringAnimationValues)
 
 import Array
 import Html
+import Html.Attributes as Hattr
 import Html.Events
 import Instrument
 import Message
 import MouseEvent
 import OperatingSystem as OS
 import Svg
-import Svg.Attributes as SvgA
+import Svg.Attributes as Sattr
 import Svg.Events
 import Utils exposing (PathSegment, joinAnimationValues, joinNums, joinPoints, loopInt)
 
@@ -22,9 +23,9 @@ instrument : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> Message
 instrument instrumentModel osModel msgForMouseOver =
     Html.div []
         [ Svg.svg
-            [ SvgA.class "instrument"
-            , SvgA.preserveAspectRatio "xMidYMid meet"
-            , SvgA.viewBox viewBox
+            [ Sattr.class "instrument"
+            , Sattr.preserveAspectRatio "xMidYMid meet"
+            , Sattr.viewBox viewBox
             ]
             ([ svgDefs
              , outerPoly
@@ -53,10 +54,10 @@ viewInlays =
     List.map
         (\index ->
             Svg.circle
-                [ SvgA.cx (String.fromFloat (Instrument.fretDistance index + Instrument.fretWidth index / 2))
-                , SvgA.cy (String.fromFloat (Instrument.height / 2))
-                , SvgA.r "16"
-                , SvgA.fill "rgba(255, 255, 255, 0.1)"
+                [ Sattr.cx (String.fromFloat (Instrument.fretDistance index + Instrument.fretWidth index / 2))
+                , Sattr.cy (String.fromFloat (Instrument.height / 2))
+                , Sattr.r "16"
+                , Sattr.fill "rgba(255, 255, 255, 0.1)"
                 ]
                 []
         )
@@ -67,89 +68,89 @@ svgDefs : Svg.Svg msg
 svgDefs =
     Svg.defs []
         [ Svg.linearGradient
-            [ SvgA.id "fretboard"
-            , SvgA.x1 "42%"
-            , SvgA.y1 "100%"
-            , SvgA.x2 "0%"
-            , SvgA.y2 "90%"
+            [ Sattr.id "fretboard"
+            , Sattr.x1 "42%"
+            , Sattr.y1 "100%"
+            , Sattr.x2 "0%"
+            , Sattr.y2 "90%"
             ]
             [ Svg.stop
-                [ SvgA.offset "0%"
-                , SvgA.style "stop-color: rgb(56, 53, 53);"
+                [ Sattr.offset "0%"
+                , Sattr.style "stop-color: rgb(56, 53, 53);"
                 ]
                 []
             , Svg.stop
-                [ SvgA.offset "100%"
-                , SvgA.style "stop-color: rgb(76, 73, 73);"
+                [ Sattr.offset "100%"
+                , Sattr.style "stop-color: rgb(76, 73, 73);"
                 ]
                 []
             ]
         , Svg.linearGradient
-            [ SvgA.id "fret"
-            , SvgA.x1 "0%"
-            , SvgA.y1 "0%"
-            , SvgA.x2 "100%"
-            , SvgA.y2 "0%"
+            [ Sattr.id "fret"
+            , Sattr.x1 "0%"
+            , Sattr.y1 "0%"
+            , Sattr.x2 "100%"
+            , Sattr.y2 "0%"
             ]
             [ Svg.stop
-                [ SvgA.offset "0%"
-                , SvgA.style "stop-color: rgb(160, 140, 130);"
+                [ Sattr.offset "0%"
+                , Sattr.style "stop-color: rgb(160, 140, 130);"
                 ]
                 []
             , Svg.stop
-                [ SvgA.offset "100%"
-                , SvgA.style "stop-color: rgb(120, 100, 90);"
+                [ Sattr.offset "100%"
+                , Sattr.style "stop-color: rgb(120, 100, 90);"
                 ]
                 []
             ]
         , Svg.filter
-            [ SvgA.id "dropshadowFretboard"
-            , SvgA.height "400%"
+            [ Sattr.id "dropshadowFretboard"
+            , Sattr.height "400%"
             ]
             [ Svg.feGaussianBlur
-                [ SvgA.in_ "SourceAlpha"
-                , SvgA.stdDeviation "3"
+                [ Sattr.in_ "SourceAlpha"
+                , Sattr.stdDeviation "3"
                 ]
                 []
             , Svg.feOffset
-                [ SvgA.dx "4"
-                , SvgA.dy "4"
-                , SvgA.result "offsetblur"
+                [ Sattr.dx "4"
+                , Sattr.dy "4"
+                , Sattr.result "offsetblur"
                 ]
                 []
             , Svg.feComponentTransfer []
-                [ Svg.feFuncA [ SvgA.slope "0.5" ] []
+                [ Svg.feFuncA [ Sattr.slope "0.5" ] []
                 ]
             , Svg.feMerge []
                 [ Svg.feMergeNode [] []
                 , Svg.feMergeNode
-                    [ SvgA.in_ "SourceGraphic"
+                    [ Sattr.in_ "SourceGraphic"
                     ]
                     []
                 ]
             ]
         , Svg.filter
-            [ SvgA.id "dropshadowFret"
-            , SvgA.height "400%"
+            [ Sattr.id "dropshadowFret"
+            , Sattr.height "400%"
             ]
             [ Svg.feGaussianBlur
-                [ SvgA.in_ "SourceAlpha"
-                , SvgA.stdDeviation "3"
+                [ Sattr.in_ "SourceAlpha"
+                , Sattr.stdDeviation "3"
                 ]
                 []
             , Svg.feOffset
-                [ SvgA.dx "2"
-                , SvgA.dy "2"
-                , SvgA.result "offsetblur"
+                [ Sattr.dx "2"
+                , Sattr.dy "2"
+                , Sattr.result "offsetblur"
                 ]
                 []
             , Svg.feComponentTransfer []
                 [ Svg.feFuncA
-                    [ SvgA.slope "0.3"
+                    [ Sattr.slope "0.3"
                     ]
                     []
                 ]
-            , Svg.feMerge [] [ Svg.feMergeNode [] [], Svg.feMergeNode [ SvgA.in_ "SourceGraphic" ] [] ]
+            , Svg.feMerge [] [ Svg.feMergeNode [] [], Svg.feMergeNode [ Sattr.in_ "SourceGraphic" ] [] ]
             ]
         ]
 
@@ -157,10 +158,10 @@ svgDefs =
 outerPoly : Svg.Svg msg
 outerPoly =
     Svg.polygon
-        [ SvgA.points outerPolyPoints
-        , SvgA.fill "url(#fretboard)"
-        , SvgA.style "filter: url(#dropshadowFretboard);"
-        , SvgA.strokeLinejoin "round"
+        [ Sattr.points outerPolyPoints
+        , Sattr.fill "url(#fretboard)"
+        , Sattr.style "filter: url(#dropshadowFretboard);"
+        , Sattr.strokeLinejoin "round"
         ]
         []
 
@@ -193,10 +194,10 @@ fretsPath =
 frets : Svg.Svg msg
 frets =
     Svg.path
-        [ SvgA.d fretsPath
-        , SvgA.strokeWidth "10"
-        , SvgA.stroke "url(#fret)"
-        , SvgA.style "filter: url(#dropshadowFret);"
+        [ Sattr.d fretsPath
+        , Sattr.strokeWidth "10"
+        , Sattr.stroke "url(#fret)"
+        , Sattr.style "filter: url(#dropshadowFret);"
         ]
         []
 
@@ -300,18 +301,18 @@ viewStringAnimation voice index time =
         values_ =
             viewStringAnimationValues activeFretX_ (stringY index) Instrument.width (44000 / (voice.currentPitch * voice.currentPitch)) amplitude
     in
-    Svg.animate [ SvgA.attributeName "d", SvgA.values (joinAnimationValues values_), SvgA.dur (String.fromInt stringAnimationDurationMS ++ "ms"), SvgA.repeatCount "indefinite" ] []
+    Svg.animate [ Sattr.attributeName "d", Sattr.values (joinAnimationValues values_), Sattr.dur (String.fromInt stringAnimationDurationMS ++ "ms"), Sattr.repeatCount "indefinite" ] []
 
 
 viewString : Instrument.Voice -> Int -> Int -> (MouseEvent.Model -> msg) -> Svg.Svg msg
 viewString voice index time msgForMouseOver =
     Svg.path
-        [ SvgA.cursor "crosshair"
-        , SvgA.strokeWidth "2"
-        , SvgA.stroke "rgba(255, 255, 255, 0.5)"
-        , SvgA.fill "none"
+        [ Sattr.cursor "crosshair"
+        , Sattr.strokeWidth "2"
+        , Sattr.stroke "rgba(255, 255, 255, 0.5)"
+        , Sattr.fill "none"
         , onMouseOver msgForMouseOver
-        , SvgA.id ("instrument-voice-" ++ String.fromInt index)
+        , Sattr.id ("instrument-voice-" ++ String.fromInt index)
         ]
         [ viewStringAnimation voice index time ]
 
@@ -329,7 +330,7 @@ viewDebugVoiceNote voiceIndex indexedNote =
         ( noteIndex, note ) =
             indexedNote
     in
-    Svg.text_ [ SvgA.y (String.fromFloat (stringY voiceIndex)), SvgA.x (String.fromFloat (Instrument.fretDistance noteIndex + 10.0)), SvgA.fill "rgba(255, 255, 255, 0.5)", SvgA.class "inert" ] [ Svg.text (String.fromFloat note) ]
+    Svg.text_ [ Sattr.y (String.fromFloat (stringY voiceIndex)), Sattr.x (String.fromFloat (Instrument.fretDistance noteIndex + 10.0)), Sattr.fill "rgba(255, 255, 255, 0.5)", Sattr.class "inert" ] [ Svg.text (String.fromFloat note) ]
 
 
 viewDebugVoiceNotes : ( Int, Instrument.Voice ) -> List (Svg.Svg msg)
@@ -356,7 +357,7 @@ viewDebugPlayingNotes model =
 
 viewDebugging : Instrument.Model -> List (Svg.Svg msg)
 viewDebugging model =
-    viewDebugNotes model ++ [ Svg.text_ [ SvgA.y "215" ] [ Svg.text ("playing notes " ++ viewDebugPlayingNotes model) ] ]
+    viewDebugNotes model ++ [ Svg.text_ [ Sattr.y "215" ] [ Svg.text ("playing notes " ++ viewDebugPlayingNotes model) ] ]
 
 
 onMouseOver : (MouseEvent.Model -> msg) -> Svg.Attribute msg
@@ -370,3 +371,11 @@ controls =
         [ Html.Events.onClick (Message.PlayChord 0.5)
         ]
         [ Html.text "strum" ]
+
+
+navMenu : Html.Html Message.Message
+navMenu =
+    Html.nav []
+        [ Html.a [ Hattr.href "/lab/fretboard" ] [ Html.text "home" ]
+        , Html.a [ Hattr.href "/faq" ] [ Html.text "FAQs" ]
+        ]

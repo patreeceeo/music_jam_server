@@ -12,7 +12,6 @@ import Modely
 import OperatingSystem as OS
 import PortMessage
 import Selectors
-import Svg.Attributes exposing (..)
 import Url exposing (Url)
 import UserInterfaces as UIs
 import Utils
@@ -48,14 +47,14 @@ init : D.Value -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
 init flags url key =
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
-            ( { os = OS.init decodedFlags.screenWidth
+            ( { os = OS.init decodedFlags.screenWidth url key
               , instrument = Just (.instrument decodedFlags)
               }
             , Cmd.none
             )
 
         Err errMsg ->
-            ( { os = OS.init 0
+            ( { os = OS.init 0 url key
               , instrument = Nothing
               }
             , PortMessage.send (PortMessage.LogError (D.errorToString errMsg))
@@ -239,12 +238,13 @@ view model =
 
 body : Model -> List (Html.Html Message.Message)
 body model =
-    case model.instrument of
+    [ UIs.navMenu
+    , case model.instrument of
         Just instrument ->
-            [ Html.div []
+            Html.div []
                 [ UIs.instrument instrument model.os Message.MouseOverVoice
                 ]
-            ]
 
         Nothing ->
-            [ Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ] ]
+            Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
+    ]

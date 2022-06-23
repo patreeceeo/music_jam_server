@@ -9,6 +9,10 @@
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
   </head>
   <body>
+    <nav>
+      <a href="/lab/fretboard">home</a>
+      <a href="/faq">FAQs</a>
+    </nav>
     <%= @inner_content %>
   </body>
 </html>

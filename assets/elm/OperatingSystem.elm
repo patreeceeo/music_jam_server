@@ -1,12 +1,16 @@
 module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, update)
 
+import Browser
 import Browser.Events
+import Browser.Navigation
 import KbdEvent
 import KbdState
 import Message exposing (Message)
 import PortMessage
 import Selectors
 import Time
+import Url exposing (Url)
+import Url.Parser
 
 
 {-| Foundational bits and bytes that encapsulate and abstract the host system i.e. Web browser
@@ -17,6 +21,7 @@ import Time
 
 
 
+-- TODO factor out a Router module?
 -- TODO use Float unless it really has to be an Int? Or vice versa?
 -- MODEL
 
@@ -31,15 +36,19 @@ type alias Model =
     , timeInMillis : Int
     , screenWidth : Int
     , kbdState : KbdState.Model
+    , currentRoute : Maybe Routes
+    , navKey : Browser.Navigation.Key
     }
 
 
-init : Int -> Model
-init screenWidth =
+init : Int -> Url -> Browser.Navigation.Key -> Model
+init screenWidth url navKey =
     { appState = AppActive
     , timeInMillis = 0
     , kbdState = KbdState.init
     , screenWidth = screenWidth
+    , currentRoute = urlToRoute url
+    , navKey = navKey
     }
 
 
@@ -49,20 +58,24 @@ init screenWidth =
 
 update : Message -> Model -> Selectors.Selectors -> ( Model, Cmd Message )
 update msg model _ =
+    let
+        cmd =
+            msgToCmd msg model
+    in
     case ( msg, model.appState ) of
         ( Message.VisibilityChange status, _ ) ->
             case status of
                 Browser.Events.Hidden ->
-                    ( { model | appState = AppSleeping }, msgToCmd msg )
+                    ( { model | appState = AppSleeping }, cmd )
 
                 Browser.Events.Visible ->
-                    ( { model | appState = AppActive }, msgToCmd msg )
+                    ( { model | appState = AppActive }, cmd )
 
         ( Message.AnimationFrame newTime, AppActive ) ->
-            ( { model | timeInMillis = Time.posixToMillis newTime }, Cmd.none )
+            ( { model | timeInMillis = Time.posixToMillis newTime }, cmd )
 
         ( Message.WindowResize width, _ ) ->
-            ( { model | screenWidth = width }, Cmd.none )
+            ( { model | screenWidth = width }, cmd )
 
         ( Message.KeyDown event, AppActive ) ->
             let
@@ -74,17 +87,34 @@ update msg model _ =
                         Nothing ->
                             { lastPressedAt = model.timeInMillis }
             in
-            ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, Cmd.none )
+            ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, cmd )
 
         _ ->
-            ( model, Cmd.none )
+            ( model, cmd )
 
 
-msgToCmd : Message -> Cmd Message
-msgToCmd msg =
+msgToCmd : Message -> Model -> Cmd Message
+msgToCmd msg model =
     case msg of
         Message.VisibilityChange status ->
             PortMessage.send (PortMessage.AppStateChange (status == Browser.Events.Hidden))
+
+        Message.UrlRequest req ->
+            case req of
+                Browser.Internal url ->
+                    let
+                        urlString =
+                            Url.toString url
+                    in
+                    case urlToRoute url of
+                        Just Faq ->
+                            Browser.Navigation.load urlString
+
+                        _ ->
+                            Browser.Navigation.pushUrl model.navKey urlString
+
+                Browser.External href ->
+                    Browser.Navigation.load href
 
         _ ->
             Cmd.none
@@ -102,3 +132,21 @@ milisSinceKeyDown key model =
 
         Nothing ->
             0
+
+
+type Routes
+    = Faq
+    | Main
+
+
+routeParser : Url.Parser.Parser (Routes -> a) a
+routeParser =
+    Url.Parser.oneOf
+        [ Url.Parser.map Faq (Url.Parser.s "faq")
+        , Url.Parser.map Main (Url.Parser.s "lab/fretboard")
+        ]
+
+
+urlToRoute : Url -> Maybe Routes
+urlToRoute url =
+    Url.Parser.parse routeParser url
