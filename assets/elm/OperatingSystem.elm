@@ -1,4 +1,4 @@
-module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, update)
+module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, setError, update)
 
 import Browser.Events
 import KbdEvent
@@ -32,6 +32,7 @@ type alias Model =
     , timeInMillis : Int
     , screenWidth : Int
     , kbdState : KbdState.Model
+    , errorMessage : String
     }
 
 
@@ -41,7 +42,13 @@ init screenWidth =
     , timeInMillis = 0
     , kbdState = KbdState.init
     , screenWidth = screenWidth
+    , errorMessage = "Something went wrong."
     }
+
+
+setError : String -> Model -> Model
+setError message model =
+    { model | errorMessage = message }
 
 
 
@@ -107,5 +114,3 @@ milisSinceKeyDown key model =
 
         Nothing ->
             0
-
-

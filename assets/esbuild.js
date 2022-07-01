@@ -62,7 +62,7 @@ if(mode === 'watch') {
   chokidar.watch("elm/**/*.elm", { ignored: "node_modules" }).on("all", (event, path) => {
     console.log(event, path);
     try {
-      execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
+      execSync("./node_modules/.bin/elm make elm/Main.elm --debug --output=../priv/static/assets/Elm.Main.js");
     } catch (error) {}
   });
 } else {

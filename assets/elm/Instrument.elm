@@ -1,6 +1,7 @@
 module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
 
 import Array exposing (Array)
+import Chord
 import CommonTypes exposing (NoteVIndex, Pitch, QTime, Volume)
 import Json.Decode as D
 import KbdEvent
@@ -13,6 +14,7 @@ import Svg.Attributes exposing (..)
 
 
 
+-- TODO DRY up and add unit tests
 -- CONSTANTS
 
 
@@ -29,7 +31,7 @@ decoder : D.Decoder Model
 decoder =
     D.map2 Model
         (D.field "voices" decodeInstrumentVoices)
-        (D.succeed [])
+        (D.succeed Chord.none)
 
 
 decodeInstrumentVoices : D.Decoder (Array Voice)
@@ -58,16 +60,6 @@ type alias Voice =
 
 
 
-{- Musical chord. For each voice, this says whether that voice participates in the chord and with which note, referring to the visual representation.
-   E.g. Am = [ (Just 0), (Just 1), (Just 2), (Just 2), (Just 0), Nothing ]
--}
-
-
-type alias Chord =
-    List (Maybe NoteVIndex)
-
-
-
 {- Musical chord. For each voice, this says whether that voice participates in the chord and in which pitch.
    E.g. Am = [ (Just 65), (Just 61), (Just 57), (Just 50), Nothing, Nothing ]
 -}
@@ -79,14 +71,14 @@ type alias MappedChord =
 
 type alias Model =
     { voices : Array Voice
-    , activeChord : Chord
+    , activeChord : Chord.Chord
     }
 
 
 init : List Voice -> Model
 init voices =
     { voices = Array.fromList voices
-    , activeChord = []
+    , activeChord = Chord.none
     }
 
 
@@ -156,7 +148,7 @@ setLastNoteStartTime when voiceIndex instrument =
             )
 
 
-setActiveChord : Chord -> Model -> Model
+setActiveChord : Chord.Chord -> Model -> Model
 setActiveChord chord model =
     { model | activeChord = chord }
 
@@ -201,7 +193,7 @@ playChordComponent volume when voiceIndex maybePitch instrument =
 
 playMappedChord : MappedChord -> Float -> Int -> Model -> Model
 playMappedChord chord volume when instrument =
-    List.Extra.indexedFoldl (playChordComponent volume when) instrument chord
+    List.Extra.indexedFoldr (playChordComponent volume when) instrument chord
 
 
 messagesForMappedChord : MappedChord -> Volume -> List (Maybe PortMessage.PlaySoundRecord)
@@ -274,10 +266,21 @@ update msg instrument select =
             else
                 ( instrument, Cmd.none )
 
+        Message.SelectChord chordName ->
+            let
+                chord =
+                    Chord.forName chordName
+            in
+            if Debug.log "SelectChord" chordName /= Chord.X_Chord then
+                ( setActiveChord chord instrument, Cmd.none )
+
+            else
+                ( instrument, Cmd.none )
+
         Message.ReceivePortMessage rawMsg ->
             case PortMessage.decode rawMsg of
                 Ok playSound ->
-                    case playSound.data of
+                    case Debug.log "PlaySound data" playSound.data of
                         PortMessage.PlaySound data ->
                             ( playNote data.voiceIndex data.pitch data.volume timeInMillis instrument
                             , Cmd.none
@@ -298,20 +301,14 @@ update msg instrument select =
 handlePlayChord : Volume -> QTime -> Model -> ( Model, Cmd Message )
 handlePlayChord volume when instrument =
     let
-        chord =
-            List.map (\_ -> Just 0) (List.range 0 5)
-
-        withChord =
-            setActiveChord chord instrument
-
         mChord =
             mapActiveChord instrument
 
         messages =
             messagesForMappedChord mChord volume
     in
-    ( playMappedChord mChord volume when withChord
-    , Cmd.batch (List.map (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
+    ( playMappedChord mChord volume when instrument
+    , Cmd.batch (List.Extra.reverseMap (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
     )
 
 

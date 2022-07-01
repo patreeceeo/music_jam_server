@@ -19,6 +19,7 @@ defmodule MusicJamServerWeb.Router do
 
     get "/", PageController, :index
     get "/lab/fretboard", PageController, :show_fretboard
+    get "/lab/selectchord", PageController, :show_fretboard
     get "/faq", PageController, :show_faq
   end
 

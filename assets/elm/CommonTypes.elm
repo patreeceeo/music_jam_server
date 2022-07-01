@@ -29,3 +29,8 @@ type alias Volume =
 
 type alias QTime =
     Int
+
+
+type Inputs
+    = SelectChordInput
+    | NoInput

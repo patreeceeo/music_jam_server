@@ -2,7 +2,8 @@ module Message exposing (Message(..))
 
 import Browser
 import Browser.Events
-import CommonTypes exposing (Volume)
+import Chord
+import CommonTypes exposing (Inputs, Volume)
 import KbdEvent
 import MouseEvent
 import PortMessage
@@ -21,3 +22,8 @@ type Message
     | PlayChord Volume
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
+    | SelectChord Chord.Names
+    | SetUIActiveChord Chord.Names
+    | RequestPreviousUrl Int
+    | FocusChange Inputs
+    | Nevermind

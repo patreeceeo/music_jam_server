@@ -1012,7 +1012,6 @@ class WebAudioFontPlayer {
       //     e.audioBufferSourceNode = null;
       // }
         if (!(envelope)) {
-            console.log("creating new envelope")
             envelope = audioContext.createGain();
             envelope.target = target;
             envelope.connect(target);

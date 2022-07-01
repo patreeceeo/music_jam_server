@@ -3,19 +3,24 @@ module Main exposing (Model, SubModels(..), main, update, view)
 import Browser
 import Browser.Events
 import Browser.Navigation
+import Chord
+import Errors
 import Html
+import Html.Attributes
 import Instrument
 import Json.Decode as D
 import KbdEvent
+import Maybe.Extra
 import Message exposing (Message)
 import Modely
 import OperatingSystem as OS
 import PortMessage
+import Router exposing (Routes(..))
 import Selectors
 import Url exposing (Url)
+import User.Interface.Instrument exposing (viewSelectChord)
 import UserInterfaces as UIs
 import Utils
-import Router
 
 
 
@@ -46,21 +51,38 @@ type alias Flags =
 
 init : D.Value -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
 init flags url navKey =
+    let
+        router =
+            Router.init url navKey
+    in
     case D.decodeValue decodeFlags flags of
         Ok decodedFlags ->
+            let
+                instrument =
+                    Just decodedFlags.instrument
+            in
             ( { os = OS.init decodedFlags.screenWidth
-              , instrument = Just (.instrument decodedFlags)
-              , router = Router.init url navKey
+              , instrument = instrument
+              , router = router
+              , uiInstrument = User.Interface.Instrument.init instrument
               }
             , Cmd.none
             )
 
-        Err errMsg ->
-            ( { os = OS.init 0
+        Err err ->
+            let
+                errMsg =
+                    D.errorToString err
+
+                errMsgWithContext =
+                    Errors.instrumentDecoding errMsg
+            in
+            ( { os = OS.setError errMsgWithContext (OS.init 0)
               , instrument = Nothing
-              , router = Router.init url navKey
+              , router = router
+              , uiInstrument = User.Interface.Instrument.init Nothing
               }
-            , PortMessage.send (PortMessage.LogError (D.errorToString errMsg))
+            , PortMessage.send (PortMessage.LogError errMsgWithContext)
             )
 
 
@@ -75,12 +97,14 @@ type alias Model =
     { os : OS.Model
     , instrument : Maybe Instrument.Model
     , router : Router.Model
+    , uiInstrument : User.Interface.Instrument.Model
     }
 
 
 type SubModels
     = OperatingSystemModel OS.Model
     | InstrumentModel (Maybe Instrument.Model)
+    | UIInstrumentModel User.Interface.Instrument.Model
     | RouterModel Router.Model
 
 
@@ -101,6 +125,10 @@ composers =
     , ( getRouter
       , mapRouter Router.update
       , setRouter
+      )
+    , ( getUIInstrument
+      , mapUIInstrument User.Interface.Instrument.update
+      , setUIInstrument
       )
     ]
 
@@ -139,6 +167,12 @@ getRouter =
     Utils.tagReturnWith RouterModel (\model -> model.router)
 
 
+getUIInstrument : Model -> SubModels
+getUIInstrument =
+    Utils.tagReturnWith UIInstrumentModel (\model -> model.uiInstrument)
+
+
+
 -- UPDATE setters
 
 
@@ -172,6 +206,21 @@ setRouter =
                     model
         )
 
+
+setUIInstrument : SubModels -> Model -> Model
+setUIInstrument =
+    Utils.untagP1 untagUIInstrument
+        (\maybeSubModel model ->
+            case maybeSubModel of
+                Just subModel ->
+                    { model | uiInstrument = subModel }
+
+                Nothing ->
+                    model
+        )
+
+
+
 {- UPDATE untaggers
    Take a tagged subModel and attempt to return the subModel itself
    E.g.
@@ -200,14 +249,26 @@ untagInstrument tagged =
         _ ->
             Nothing
 
+
 untagRouter : SubModels -> Maybe Router.Model
 untagRouter tagged =
     case tagged of
         RouterModel model ->
-          Just model
+            Just model
 
         _ ->
             Nothing
+
+
+untagUIInstrument : SubModels -> Maybe User.Interface.Instrument.Model
+untagUIInstrument tagged =
+    case tagged of
+        UIInstrumentModel model ->
+            Just model
+
+        _ ->
+            Nothing
+
 
 
 {- UPDATE mappers
@@ -241,14 +302,26 @@ mapInstrument update_ msg taggedModel selectors =
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
 
 
-mapRouter : (Message -> Router.Model -> Selectors.Selectors -> (Router.Model, Cmd Message)) -> Message -> SubModels -> Selectors.Selectors -> (SubModels, Cmd Message)
+mapRouter : (Message -> Router.Model -> Selectors.Selectors -> ( Router.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
 mapRouter update_ msg taggedModel selectors =
-  case untagRouter taggedModel of
-    Just model ->
-      Tuple.mapFirst RouterModel (update_ msg model selectors)
+    case untagRouter taggedModel of
+        Just model ->
+            Tuple.mapFirst RouterModel (update_ msg model selectors)
 
-    Nothing ->
-      ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+        Nothing ->
+            ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+
+
+mapUIInstrument : (Message -> User.Interface.Instrument.Model -> Selectors.Selectors -> ( User.Interface.Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapUIInstrument update_ msg taggedModel selectors =
+    case untagUIInstrument taggedModel of
+        Just model ->
+            Tuple.mapFirst UIInstrumentModel (update_ msg model selectors)
+
+        Nothing ->
+            ( Debug.log "received unexpected type " taggedModel, Cmd.none )
+
+
 
 -- SUBS
 
@@ -278,13 +351,44 @@ view model =
 
 body : Model -> List (Html.Html Message.Message)
 body model =
-    [ UIs.navMenu
-    , case model.instrument of
-        Just instrument ->
-            Html.div []
-                [ UIs.instrument instrument model.os Message.MouseOverVoice
-                ]
+    let
+        maybeCurrentRoute =
+            model.router.currentRoute
 
-        Nothing ->
-            Html.p [] [ Html.text "Uh oh there was an error! Looks like the programmers goofed up the JSON encoding/decoding" ]
+        fallbackHtml =
+            Html.p [] [ Html.text model.os.errorMessage ]
+    in
+    [ UIs.navMenu
+    , Maybe.Extra.unwrap fallbackHtml
+        (\currentRoute ->
+            if List.member currentRoute [ Router.Main, Router.SelectChord ] then
+                Maybe.Extra.unwrap fallbackHtml
+                    (\instrument ->
+                        let
+                            instrumentHtml =
+                                UIs.instrument instrument model.os Message.MouseOverVoice
+
+                            selectChordLink =
+                                Html.a [ Html.Attributes.href "/lab/selectchord" ] [ Html.text "[change]" ]
+
+                            currentChord =
+                                Html.span [] [ Html.text ("chord: " ++ Chord.nameToStr model.uiInstrument.activeChord) ]
+
+                            defaultHtml =
+                                [ instrumentHtml, currentChord, selectChordLink ]
+                        in
+                        Html.div []
+                            (if currentRoute == Router.SelectChord then
+                                defaultHtml ++ [ viewSelectChord model.uiInstrument ]
+
+                             else
+                                defaultHtml
+                            )
+                    )
+                    model.instrument
+
+            else
+                fallbackHtml
+        )
+        maybeCurrentRoute
     ]
