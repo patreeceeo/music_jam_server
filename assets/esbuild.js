@@ -67,6 +67,6 @@ if(mode === 'watch') {
   });
 } else {
   try {
-    execSync("./node_modules/.bin/elm make elm/Main.elm --output=../priv/static/assets/Elm.Main.js");
+    execSync("./node_modules/.bin/elm make elm/Main.elm --debug --output=../priv/static/assets/Elm.Main.js");
   } catch (error) {}
 }
