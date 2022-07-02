@@ -379,7 +379,7 @@ body model =
                         in
                         Html.div []
                             (if currentRoute == Router.SelectChord then
-                                defaultHtml ++ [ viewSelectChord model.uiInstrument ]
+                                [viewSelectChord model.uiInstrument]
 
                              else
                                 defaultHtml
