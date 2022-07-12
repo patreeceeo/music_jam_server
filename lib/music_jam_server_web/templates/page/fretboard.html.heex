@@ -6,7 +6,8 @@
       window.config = {
         flags: {
           screenWidth: window.innerWidth,
-          instrument: <%= raw instrument() %>
+          instrument: <%= raw instrument() %>,
+          clientId: "<%= csrf_token_value() %>"
         }
       }
 

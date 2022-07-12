@@ -1,6 +1,8 @@
-module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, tagReturnWith, tagReturnWithP2, untagP1, untagP2, mapAccumr)
+module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, mapAccumr, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
 
 -- Like List.Extra.mapAccumr but simpler
+
+
 mapAccumr : (a -> b -> a) -> a -> List b -> a
 mapAccumr f acc0 list =
     List.foldr
@@ -70,3 +72,12 @@ untagP1 untag f tagged p2 =
 untagP2 : (tagged -> p2) -> (p1 -> p2 -> return) -> (p1 -> tagged -> return)
 untagP2 untag f p1 tagged =
     f p1 (untag tagged)
+
+
+debugUnless : String -> msg -> (msg -> Bool) -> msg
+debugUnless str msg f =
+    if f msg then
+        msg
+
+    else
+        Debug.log str msg

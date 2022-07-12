@@ -1,12 +1,12 @@
 module OperatingSystem exposing (AppState(..), Model, init, milisSinceKeyDown, msgToCmd, setError, update)
 
 import Browser.Events
+import CommonTypes exposing (ClientId, Selectors)
 import KbdEvent
 import KbdState
 import Message exposing (Message)
 import PortMessage
 import Time
-import CommonTypes exposing (Selectors)
 
 
 {-| Foundational bits and bytes that encapsulate and abstract the host system i.e. Web browser
@@ -28,7 +28,8 @@ type AppState
 
 
 type alias Model =
-    { appState : AppState
+    { clientId : ClientId
+    , appState : AppState
     , timeInMillis : Int
     , screenWidth : Int
     , kbdState : KbdState.Model
@@ -36,9 +37,10 @@ type alias Model =
     }
 
 
-init : Int -> Model
-init screenWidth =
-    { appState = AppActive
+init : ClientId -> Int -> Model
+init clientId screenWidth =
+    { clientId = clientId
+    , appState = AppActive
     , timeInMillis = 0
     , kbdState = KbdState.init
     , screenWidth = screenWidth
@@ -77,23 +79,25 @@ update msg model _ =
             ( { model | screenWidth = width }, cmd )
 
         ( Message.KeyDown event, AppActive ) ->
-          let
-              newKbdState = KbdState.setPressed event.key True model.timeInMillis model.kbdState
-          in
-            ( { model | kbdState = newKbdState}, cmd )
+            let
+                newKbdState =
+                    KbdState.setPressed event.key True model.timeInMillis model.kbdState
+            in
+            ( { model | kbdState = newKbdState }, cmd )
 
         ( Message.KeyUp event, AppActive ) ->
             let
                 newKeyState =
-                  case KbdState.get event.key model.kbdState of
-                    Just keyState ->
-                      { keyState | pressedState = KbdState.KeyIsReleased }
-                    Nothing ->
-                      { lastPressedAt = 0
-                      , pressedState = KbdState.KeyIsReleased
-                      }
+                    case KbdState.get event.key model.kbdState of
+                        Just keyState ->
+                            { keyState | pressedState = KbdState.KeyIsReleased }
+
+                        Nothing ->
+                            { lastPressedAt = 0
+                            , pressedState = KbdState.KeyIsReleased
+                            }
             in
-                ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, Cmd.none)
+            ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, Cmd.none )
 
         _ ->
             ( model, cmd )

@@ -47,6 +47,7 @@ function $(selector) {
 }
 
 
+
 document.addEventListener("DOMContentLoaded", () => {
   topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
   topbar.show()

@@ -1,4 +1,4 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width, currentPitch)
+module Instrument exposing (Model, Voice, currentPitch, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
 
 import Array exposing (Array)
 import Chord
@@ -123,15 +123,15 @@ setCurrentPitch pitch voiceIndex instrument =
                     |> asVoiceIn voiceIndex instrument
             )
 
+
 currentPitch : Int -> Model -> Maybe Pitch
 currentPitch voiceIndex instrument =
-  case voiceAt voiceIndex instrument of
-    Just voice ->
-      Just voice.currentPitch
-    _ ->
-      Nothing
+    case voiceAt voiceIndex instrument of
+        Just voice ->
+            Just voice.currentPitch
 
-
+        _ ->
+            Nothing
 
 
 setCurrentVolume : Float -> Int -> Model -> Model
@@ -212,13 +212,6 @@ messagesForMappedChord chord volume =
 
 -- UPDATE
 
-debugMsg : String -> Message -> Message
-debugMsg str msg =
-  case msg of
-    Message.AnimationFrame _ ->
-      msg
-    _ ->
-      Debug.log str msg
 
 update : Message -> Model -> Selectors -> ( Model, Cmd Message )
 update msg instrument select =
@@ -226,14 +219,14 @@ update msg instrument select =
         timeInMillis =
             select.timeInMillis ()
     in
-    case debugMsg "instrument msg" msg of
+    case msg of
         Message.PlayChord volume ->
             handlePlayChord volume timeInMillis instrument
 
         Message.PlayNote volume voiceIndex pitch ->
-          ( playNote voiceIndex pitch volume timeInMillis instrument
-          , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
-          )
+            ( playNote voiceIndex pitch volume timeInMillis instrument
+            , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+            )
 
         -- TODO replace MouseOverVoice with PlayNote
         Message.MouseOverVoice index event ->
@@ -269,7 +262,7 @@ update msg instrument select =
             else
                 ( instrument, Cmd.none )
 
-        Message.ReceivePortMessage rawMsg ->
+        Message.ReceivePortMessage _ rawMsg ->
             case PortMessage.decode rawMsg of
                 Ok playSound ->
                     case playSound.data of
@@ -396,5 +389,3 @@ noteAt : Int -> Int -> Model -> Maybe Float
 noteAt noteIndex voiceIndex model =
     voiceAt voiceIndex model
         |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
-
-

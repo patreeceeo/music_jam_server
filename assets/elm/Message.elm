@@ -3,7 +3,7 @@ module Message exposing (Message(..))
 import Browser
 import Browser.Events
 import Chord
-import CommonTypes exposing (Inputs, Volume, Pitch, NoteVIndex)
+import CommonTypes exposing (ClientId, Inputs, NoteVIndex, Pitch, Volume)
 import KbdEvent
 import MouseEvent
 import PortMessage
@@ -17,7 +17,7 @@ type Message
     | WindowResize Int
     | KeyDown KbdEvent.Model
     | KeyUp KbdEvent.Model
-    | ReceivePortMessage PortMessage.RawMessage
+    | ReceivePortMessage ClientId PortMessage.RawMessage
     | VisibilityChange Browser.Events.Visibility
     | PlayNote Volume NoteVIndex Pitch
     | PlayChord Volume

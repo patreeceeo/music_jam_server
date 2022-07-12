@@ -1,20 +1,28 @@
-module KbdState exposing (Model, get, init, set, isPressed, setPressed, KeyPressedState(..))
+module KbdState exposing (KeyPressedState(..), Model, get, init, isPressed, set, setPressed)
 
+import CommonTypes exposing (QTime)
 import Dict exposing (Dict)
 import KbdEvent exposing (Key(..))
 import List.Extra
-import CommonTypes exposing (QTime)
 
-type KeyPressedState = KeyIsPressed | KeyIsReleased
+
+type KeyPressedState
+    = KeyIsPressed
+    | KeyIsReleased
+
 
 type alias KeyState =
     { lastPressedAt : Int
-    , pressedState: KeyPressedState
+    , pressedState : KeyPressedState
     }
 
-initKeyState = { lastPressedAt = 0
-               , pressedState = KeyIsReleased
-               }
+
+initKeyState : KeyState
+initKeyState =
+    { lastPressedAt = 0
+    , pressedState = KeyIsReleased
+    }
+
 
 type alias Model =
     Dict Int KeyState
@@ -63,31 +71,37 @@ get key model =
         _ ->
             Nothing
 
+
 isPressed : Key -> Model -> Bool
 isPressed key model =
-  case get key model of
-    Just keyState ->
-      keyState.pressedState == KeyIsPressed
-    Nothing ->
-      False
+    case get key model of
+        Just keyState ->
+            keyState.pressedState == KeyIsPressed
+
+        Nothing ->
+            False
+
 
 setPressed : Key -> Bool -> QTime -> Model -> Model
 setPressed key bool time model =
-  let
-      maybeKeyState = get key model
-      newPressedState = if bool then
-          KeyIsPressed
-        else
-          KeyIsReleased
-  in
-  case maybeKeyState of
-    Just currentKeyState ->
-      if newPressedState == KeyIsPressed then
-        set key { currentKeyState | pressedState = newPressedState, lastPressedAt = time } model
-      else
-        set key { currentKeyState | pressedState = newPressedState } model
-    Nothing ->
-      model
+    if bool then
+        let
+            currentKeyState =
+                get key model
+                    |> Maybe.withDefault initKeyState
+
+            newKeyState =
+                { currentKeyState | pressedState = KeyIsPressed, lastPressedAt = time }
+        in
+        set key newKeyState model
+
+    else
+        case get key model of
+            Just currentKeyState ->
+                set key { currentKeyState | pressedState = KeyIsReleased } model
+
+            Nothing ->
+                model
 
 
 init : Model

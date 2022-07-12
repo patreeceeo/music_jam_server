@@ -1,5 +1,8 @@
 module CommonTypes exposing (..)
+
 import KbdEvent
+
+
 
 {- Note representation which corresponds to the visual presentation of the instrument, e.g. which number fret on a guitar's fretboard. -}
 
@@ -36,10 +39,12 @@ type Inputs
     = SelectChordInput
     | NoInput
 
+
 type Routes
     = FaqRoute
     | MainRoute
     | SelectChordRoute
+
 
 type alias Selectors =
     { milisSinceKeyDown : KbdEvent.Key -> Int
@@ -47,3 +52,7 @@ type alias Selectors =
     , screenWidth : () -> Int
     , currentRoute : () -> Maybe Routes
     }
+
+
+type alias ClientId =
+    String

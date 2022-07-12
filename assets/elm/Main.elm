@@ -6,7 +6,7 @@ import Browser
 import Browser.Events
 import Browser.Navigation
 import Chord
-import CommonTypes exposing (Routes(..), Selectors)
+import CommonTypes exposing (ClientId, Routes(..), Selectors)
 import Errors
 import Html
 import Html.Attributes
@@ -47,7 +47,8 @@ main =
 
 
 type alias Flags =
-    { screenWidth : Int
+    { clientId : ClientId
+    , screenWidth : Int
     , instrument : Instrument.Model
     }
 
@@ -64,7 +65,7 @@ init flags url navKey =
                 instrument =
                     Just decodedFlags.instrument
             in
-            ( { os = OS.init decodedFlags.screenWidth
+            ( { os = OS.init decodedFlags.clientId decodedFlags.screenWidth
               , instrument = instrument
               , router = router
               , uiInstrument = User.Interface.Instrument.init instrument
@@ -80,7 +81,7 @@ init flags url navKey =
                 errMsgWithContext =
                     Errors.instrumentDecoding errMsg
             in
-            ( { os = OS.setError errMsgWithContext (OS.init 0)
+            ( { os = OS.setError errMsgWithContext (OS.init "" 0)
               , instrument = Nothing
               , router = router
               , uiInstrument = User.Interface.Instrument.init Nothing
@@ -91,7 +92,8 @@ init flags url navKey =
 
 decodeFlags : D.Decoder Flags
 decodeFlags =
-    D.map2 Flags
+    D.map3 Flags
+        (D.field "clientId" D.string)
         (D.field "screenWidth" D.int)
         (D.field "instrument" Instrument.decoder)
 
@@ -151,68 +153,82 @@ update : Message -> Model -> ( Model, Cmd Message )
 update msg model =
     -- Translate route/message combinations into new messages for sub module updates
     let
-        maybeMappedMsg = case ( model.router.currentRoute, msg ) of
-          ( Just MainRoute, Message.KeyUp event ) ->
-              let
-                  milisSinceKeyDown =
-                      OS.milisSinceKeyDown event.key model.os
+        mappedMsgs =
+            case ( model.router.currentRoute, msg ) of
+                -- Ignore messages originating from this client
+                ( _, Message.ReceivePortMessage clientId _ ) ->
+                    if clientId == model.os.clientId then
+                        []
 
-                  volume =
-                      User.Interface.intensityOfKeyPress milisSinceKeyDown
-              in
-                case event.key of
-                  KbdEvent.KeySpace ->
-                    Just (Message.PlayChord volume)
+                    else
+                        [ msg ]
 
-                  _ ->
-                      Maybe.map2 (\instrument voiceIndex ->
-                        Instrument.currentPitch voiceIndex instrument
-                          |> Maybe.andThen (\pitch ->
-                            Just (Message.PlayNote volume voiceIndex pitch)
-                          )
-                      )
-                      (model.instrument)
-                      (User.Interface.voiceIndexForKey event.key)
-                        |> Maybe.Extra.join
+                ( Just MainRoute, Message.KeyUp event ) ->
+                    let
+                        milisSinceKeyDown =
+                            OS.milisSinceKeyDown event.key model.os
 
-          ( Just SelectChordRoute, Message.KeyDown event ) ->
-              if model.router.currentRoute == Just SelectChordRoute then
-                  let
-                      newChordName =
-                          case seekDirectionForKey event.key of
-                              User.Interface.SeekForward ->
-                                  Chord.next model.uiInstrument.activeChord
+                        volume =
+                            User.Interface.intensityOfKeyPress milisSinceKeyDown
+                    in
+                    case event.key of
+                        KbdEvent.KeySpace ->
+                            [ msg, Message.PlayChord volume ]
 
-                              User.Interface.SeekBackward ->
-                                  Chord.previous model.uiInstrument.activeChord
+                        _ ->
+                            Maybe.map2
+                                (\instrument voiceIndex ->
+                                    case Instrument.currentPitch voiceIndex instrument of
+                                        Just pitch ->
+                                            [ msg, Message.PlayNote volume voiceIndex pitch ]
 
-                              User.Interface.NoSeek ->
-                                  model.uiInstrument.activeChord
-                  in
-                    Just (Message.SelectChord newChordName)
+                                        Nothing ->
+                                            [ msg ]
+                                )
+                                model.instrument
+                                (User.Interface.voiceIndexForKey event.key)
+                                |> Maybe.withDefault [ msg ]
 
-              else
-                  Nothing
+                ( Just SelectChordRoute, Message.KeyDown event ) ->
+                    if model.router.currentRoute == Just SelectChordRoute then
+                        let
+                            newChordName =
+                                case seekDirectionForKey event.key of
+                                    User.Interface.SeekForward ->
+                                        Chord.next model.uiInstrument.activeChord
 
-          _ ->
-              Nothing
+                                    User.Interface.SeekBackward ->
+                                        Chord.previous model.uiInstrument.activeChord
+
+                                    User.Interface.NoSeek ->
+                                        model.uiInstrument.activeChord
+                        in
+                        [ msg, Message.SelectChord newChordName ]
+
+                    else
+                        [ msg ]
+
+                _ ->
+                    [ msg ]
     in
-      -- Send original message as well as mapped message (if there is one)
-      case maybeMappedMsg of
-        Just mappedMsg ->
-          updateSubsX [mappedMsg, msg] model
-        Nothing ->
-          updateSubs msg model
+    -- Send original message as well as mapped message (if there is one)
+    updateSubsX mappedMsgs model
+
+
 
 -- TODO this is similar to code in Modely
-updateSubsX : List Message -> Model -> (Model, Cmd Message)
-updateSubsX msgList model =
-  let
-      (finalModel, cmdList) = Utils.mapAccumr updateSubsFold (model, []) msgList
-  in
-    (finalModel, Cmd.batch cmdList)
 
-updateSubsFold : (Model, List (Cmd Message)) -> Message -> (Model, List (Cmd Message))
+
+updateSubsX : List Message -> Model -> ( Model, Cmd Message )
+updateSubsX msgList model =
+    let
+        ( finalModel, cmdList ) =
+            Utils.mapAccumr updateSubsFold ( model, [] ) msgList
+    in
+    ( finalModel, Cmd.batch cmdList )
+
+
+updateSubsFold : ( Model, List (Cmd Message) ) -> Message -> ( Model, List (Cmd Message) )
 updateSubsFold acc msg =
     let
         ( accModel, accCmd ) =
@@ -408,14 +424,14 @@ mapUIInstrument update_ msg taggedModel selectors =
 
 
 subscriptions : Model -> Sub Message
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Browser.Events.onAnimationFrame Message.AnimationFrame
         , Browser.Events.onResize (\w _ -> Message.WindowResize w)
         , Browser.Events.onVisibilityChange Message.VisibilityChange
         , Browser.Events.onKeyDown (KbdEvent.decode |> D.map Message.KeyDown)
         , Browser.Events.onKeyUp (KbdEvent.decode |> D.map Message.KeyUp)
-        , PortMessage.receive Message.ReceivePortMessage
+        , PortMessage.receive (Message.ReceivePortMessage model.os.clientId)
         ]
 
 
