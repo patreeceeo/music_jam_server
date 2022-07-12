@@ -1,14 +1,15 @@
-module Instrument exposing (Model, Voice, currentPitch, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
+module Instrument exposing (Model, Voice, chordNotes, currentPitch, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
 
 import Array exposing (Array)
 import Chord
-import CommonTypes exposing (NoteVIndex, Pitch, QTime, Selectors, Volume)
+import CommonTypes exposing (Pitch, QTime, Selectors, Volume)
 import Json.Decode as D
 import List.Extra
 import Maybe.Extra
 import Message exposing (Message)
 import PortMessage
 import Svg.Attributes exposing (..)
+import Utils
 
 
 
@@ -27,16 +28,15 @@ mouseOverVoiceVolume =
 
 decoder : D.Decoder Model
 decoder =
-    D.map2 Model
+    D.map Model
         (D.field "voices" decodeInstrumentVoices)
-        (D.succeed Chord.none)
 
 
 decodeInstrumentVoices : D.Decoder (Array Voice)
 decodeInstrumentVoices =
     D.array
         (D.map4 Voice
-            (D.field "currentPitch" D.float)
+            (D.field "currentPitch" (D.maybe D.float))
             (D.field "currentVolume" D.float)
             (D.field "lastNoteStartTime" D.int)
             (D.field "notes" (D.array D.float))
@@ -48,7 +48,7 @@ decodeInstrumentVoices =
 
 
 type alias Voice =
-    { currentPitch : Pitch
+    { currentPitch : Maybe Pitch -- The pitch of the note that would be played when currentVolume > 0, Nothing implies voice is muted
     , currentVolume : Volume
     , lastNoteStartTime : QTime
 
@@ -63,26 +63,20 @@ type alias Voice =
 -}
 
 
-type alias MappedChord =
-    List (Maybe Pitch)
-
-
 type alias Model =
     { voices : Array Voice
-    , activeChord : Chord.Chord
     }
 
 
 init : List Voice -> Model
 init voices =
     { voices = Array.fromList voices
-    , activeChord = Chord.none
     }
 
 
 initVoice : List Float -> Voice
 initVoice notes =
-    { currentPitch = 0
+    { currentPitch = Nothing
     , currentVolume = 0
     , lastNoteStartTime = 0
     , notes = Array.fromList notes
@@ -100,7 +94,7 @@ asVoiceIn index instrument voice =
 
 asCurrentPitchIn : Voice -> Float -> Voice
 asCurrentPitchIn voice pitch =
-    { voice | currentPitch = pitch }
+    { voice | currentPitch = Just pitch }
 
 
 asCurrentVolumeIn : Voice -> Float -> Voice
@@ -128,7 +122,7 @@ currentPitch : Int -> Model -> Maybe Pitch
 currentPitch voiceIndex instrument =
     case voiceAt voiceIndex instrument of
         Just voice ->
-            Just voice.currentPitch
+            voice.currentPitch
 
         _ ->
             Nothing
@@ -158,7 +152,19 @@ setLastNoteStartTime when voiceIndex instrument =
 
 setActiveChord : Chord.Chord -> Model -> Model
 setActiveChord chord model =
-    { model | activeChord = chord }
+    let
+        mappedChord =
+            List.indexedMap
+                (\voiceIndex comp ->
+                    comp
+                        |> Maybe.andThen
+                            (\noteIndex ->
+                                noteAt noteIndex voiceIndex model
+                            )
+                )
+                chord
+    in
+    List.Extra.indexedFoldr setChordComponent model mappedChord
 
 
 playNote : Int -> Float -> Float -> Int -> Model -> Model
@@ -169,44 +175,21 @@ playNote voiceIndex pitch volume when instrument =
         |> setCurrentVolume volume voiceIndex
 
 
-
-{- map a chord to its list of component pitches -}
-
-
-mapActiveChord : Model -> List (Maybe Float)
-mapActiveChord model =
-    List.indexedMap
-        (\voiceIndex comp ->
-            comp
-                |> Maybe.andThen
-                    (\noteIndex ->
-                        noteAt noteIndex voiceIndex model
-                    )
-        )
-        model.activeChord
-
-
-playChordComponent : Float -> Int -> Int -> Maybe Float -> Model -> Model
-playChordComponent volume when voiceIndex maybePitch instrument =
+setChordComponent : Int -> Maybe Float -> Model -> Model
+setChordComponent voiceIndex maybePitch model =
     maybePitch
-        |> Maybe.Extra.unwrap instrument
+        |> Maybe.Extra.unwrap model
             (\pitch ->
-                playNote voiceIndex pitch volume when instrument
+                model
+                    |> setCurrentPitch pitch voiceIndex
             )
 
 
-
--- TODO create type aliases for notes pitches etc
-
-
-playMappedChord : MappedChord -> Float -> Int -> Model -> Model
-playMappedChord chord volume when instrument =
-    List.Extra.indexedFoldr (playChordComponent volume when) instrument chord
-
-
-messagesForMappedChord : MappedChord -> Volume -> List (Maybe PortMessage.PlaySoundRecord)
-messagesForMappedChord chord volume =
-    List.indexedMap (\index maybePitch -> maybePitch |> Maybe.map (\pitch -> { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = volume })) chord
+chordNotes : Volume -> Model -> List PortMessage.PlaySoundRecord
+chordNotes volume model =
+    Array.toList model.voices
+        |> List.indexedMap (\index voice -> voice.currentPitch |> Maybe.map (\pitch -> { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = volume }))
+        |> List.filterMap identity
 
 
 
@@ -221,7 +204,13 @@ update msg instrument select =
     in
     case msg of
         Message.PlayChord volume ->
-            handlePlayChord volume timeInMillis instrument
+            let
+                notes =
+                    chordNotes volume instrument
+            in
+            ( Utils.mapAccumr (\acc note -> playNote note.voiceIndex note.pitch note.volume timeInMillis acc) instrument notes
+            , Cmd.batch (List.Extra.reverseMap (\playSound -> PortMessage.send (PortMessage.PlaySound playSound)) notes)
+            )
 
         Message.PlayNote volume voiceIndex pitch ->
             ( playNote voiceIndex pitch volume timeInMillis instrument
@@ -283,18 +272,18 @@ update msg instrument select =
             ( instrument, Cmd.none )
 
 
-handlePlayChord : Volume -> QTime -> Model -> ( Model, Cmd Message )
-handlePlayChord volume when instrument =
-    let
-        mChord =
-            mapActiveChord instrument
 
-        messages =
-            messagesForMappedChord mChord volume
-    in
-    ( playMappedChord mChord volume when instrument
-    , Cmd.batch (List.Extra.reverseMap (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
-    )
+-- handlePlayChord : Volume -> QTime -> Model -> ( Model, Cmd Message )
+-- handlePlayChord volume when instrument =
+--     let
+--         mChord =
+--             mapActiveChord instrument
+--         messages =
+--             messagesForMappedChord mChord volume
+--     in
+--     ( playMappedChord mChord volume when instrument
+--     , Cmd.batch (List.Extra.reverseMap (Maybe.Extra.unwrap Cmd.none (\playSound -> PortMessage.send (PortMessage.PlaySound playSound))) messages)
+--     )
 
 
 pitchAtOffset : Int -> Int -> Model -> Int -> Result String Float

@@ -1,7 +1,9 @@
 module InstrumentTests exposing (..)
 
+import Array
 import Expect
 import Instrument
+import PortMessage
 import Test exposing (..)
 
 
@@ -37,7 +39,11 @@ testMapChord =
                     , Just 5.0
                     ]
             in
-            Expect.equal expected (Instrument.mapActiveChord instrument)
+            Expect.equal expected
+                (instrument.voices
+                    |> Array.map (\v -> v.currentPitch)
+                    |> Array.toList
+                )
     ]
 
 
@@ -46,17 +52,26 @@ testMessagesForMappedChord =
     [ test "normal case" <|
         \_ ->
             let
-                chord =
-                    [ Nothing
-                    , Just 3.0
-                    , Just 5.0
+                voices =
+                    [ Instrument.initVoice [ 1.0, 2.0, 3.0 ]
+                    , Instrument.initVoice [ 2.0, 3.0, 4.0 ]
+                    , Instrument.initVoice [ 3.0, 4.0, 5.0 ]
                     ]
 
-                expected =
+                chord =
                     [ Nothing
-                    , Just { soundId = "acoustic-guitar", voiceIndex = 1, pitch = 3.0, volume = 4.2 }
-                    , Just { soundId = "acoustic-guitar", voiceIndex = 2, pitch = 5.0, volume = 4.2 }
+                    , Just 3
+                    , Just 5
+                    ]
+
+                instrument =
+                    Instrument.init voices
+                        |> Instrument.setActiveChord chord
+
+                expected =
+                    [ PortMessage.PlaySoundRecord "acoustic-guitar" 1 3.0 4.2
+                    , PortMessage.PlaySoundRecord "acoustic-guitar" 2 5.0 4.2
                     ]
             in
-            Expect.equal expected (Instrument.messagesForMappedChord chord 4.2)
+            Expect.equal expected (Instrument.chordNotes 4.2 instrument)
     ]

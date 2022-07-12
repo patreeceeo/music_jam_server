@@ -1,20 +1,19 @@
 module User.Interface.Instrument exposing (Model, init, update, viewSelectChord)
 
 import Chord
-import CommonTypes exposing (Inputs(..))
+import CommonTypes exposing (Inputs(..), Routes(..), Selectors)
 import FormElementEvent
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
-import Instrument
 import Json.Decode
-import Message exposing (Message(..))
 import KbdEvent exposing (Key(..))
-import CommonTypes exposing (Routes(..), Selectors)
+import Message exposing (Message(..))
 
 
 type alias Model =
-    { activeChord : Chord.Names
+    { activeChordName : Chord.Names
+    , activeChord : Chord.Chord
     , hasFocus : Inputs
     }
 
@@ -23,30 +22,19 @@ type alias Model =
 {- TODO How to return commands? -}
 
 
-init : Maybe Instrument.Model -> Model
-init maybeInstrument =
-    { activeChord =
-        case maybeInstrument of
-            Just instrument ->
-                case Chord.identify instrument.activeChord of
-                    Ok name ->
-                        name
-
-                    Err errMsg ->
-                        Debug.log errMsg Chord.X_Chord
-
-            Nothing ->
-                Chord.X_Chord
+init : Model
+init =
+    { activeChordName = Chord.X_Chord
+    , activeChord = Chord.none
     , hasFocus = NoInput
     }
-
 
 
 update : Message -> Model -> Selectors -> ( Model, Cmd Message )
 update msg model _ =
     case msg of
         Message.SelectChord chord ->
-            ( { model | activeChord = chord }, Cmd.none )
+            ( { model | activeChordName = chord }, Cmd.none )
 
         Message.FocusChange input ->
             ( { model | hasFocus = Debug.log "input" input }, Cmd.none )
@@ -92,7 +80,7 @@ viewSelectChordForm onSubmit model =
         ]
         [ H.div [ HA.class "flex flex-row items-center" ]
             [ H.button
-                [ HE.onClick (Message.SelectChord (Chord.previous model.activeChord))
+                [ HE.onClick (Message.SelectChord (Chord.previous model.activeChordName))
                 , HA.type_ "button"
                 ]
                 [ H.text "◀" ]
@@ -108,12 +96,12 @@ viewSelectChordForm onSubmit model =
                     )
                 , HA.for "chord-select"
                 ]
-                [ H.text (Chord.nameToStr model.activeChord)
+                [ H.text (Chord.nameToStr model.activeChordName)
                 ]
             , H.select
                 [ HA.id "chord-select"
                 , HA.class "visually-hidden"
-                , HA.value (String.fromInt (Chord.nameToInt model.activeChord))
+                , HA.value (String.fromInt (Chord.nameToInt model.activeChordName))
                 , Message.FocusChange SelectChordInput
                     |> Json.Decode.succeed
                     |> HE.on "focus"
@@ -127,7 +115,7 @@ viewSelectChordForm onSubmit model =
                 ]
                 (List.map (\( int, string ) -> H.option [ HA.value (String.fromInt int) ] [ H.text string ]) Chord.nameIntStrPairs)
             , H.button
-                [ HE.onClick (Message.SelectChord (Chord.next model.activeChord))
+                [ HE.onClick (Message.SelectChord (Chord.next model.activeChordName))
                 , HA.type_ "button"
                 ]
                 [ H.text "▶" ]

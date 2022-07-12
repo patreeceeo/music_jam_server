@@ -68,7 +68,7 @@ init flags url navKey =
             ( { os = OS.init decodedFlags.clientId decodedFlags.screenWidth
               , instrument = instrument
               , router = router
-              , uiInstrument = User.Interface.Instrument.init instrument
+              , uiInstrument = User.Interface.Instrument.init
               }
             , Cmd.none
             )
@@ -84,7 +84,7 @@ init flags url navKey =
             ( { os = OS.setError errMsgWithContext (OS.init "" 0)
               , instrument = Nothing
               , router = router
-              , uiInstrument = User.Interface.Instrument.init Nothing
+              , uiInstrument = User.Interface.Instrument.init
               }
             , PortMessage.send (PortMessage.LogError errMsgWithContext)
             )
@@ -180,7 +180,7 @@ update msg model =
                                 (\instrument voiceIndex ->
                                     case Instrument.currentPitch voiceIndex instrument of
                                         Just pitch ->
-                                            [ msg, Message.PlayNote volume voiceIndex pitch ]
+                                            [ msg, Message.PlayNote volume voiceIndex (Debug.log "pitch" pitch) ]
 
                                         Nothing ->
                                             [ msg ]
@@ -195,13 +195,13 @@ update msg model =
                             newChordName =
                                 case seekDirectionForKey event.key of
                                     User.Interface.SeekForward ->
-                                        Chord.next model.uiInstrument.activeChord
+                                        Chord.next model.uiInstrument.activeChordName
 
                                     User.Interface.SeekBackward ->
-                                        Chord.previous model.uiInstrument.activeChord
+                                        Chord.previous model.uiInstrument.activeChordName
 
                                     User.Interface.NoSeek ->
-                                        model.uiInstrument.activeChord
+                                        model.uiInstrument.activeChordName
                         in
                         [ msg, Message.SelectChord newChordName ]
 
@@ -469,7 +469,7 @@ body model =
                                 Html.a [ Html.Attributes.href "/lab/selectchord" ] [ Html.text "[change]" ]
 
                             currentChord =
-                                Html.span [] [ Html.text ("chord: " ++ Chord.nameToStr model.uiInstrument.activeChord) ]
+                                Html.span [] [ Html.text ("chord: " ++ Chord.nameToStr model.uiInstrument.activeChordName) ]
 
                             defaultHtml =
                                 [ instrumentHtml, currentChord, selectChordLink ]

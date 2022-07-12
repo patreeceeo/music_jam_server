@@ -204,15 +204,15 @@ frets =
 
 activeFretX : Instrument.Voice -> Float
 activeFretX voice =
-    case Array.get 0 voice.notes of
-        Just firstNote ->
-            if voice.currentPitch > 0 then
-                Instrument.fretDistance (floor (voice.currentPitch - firstNote))
+    case ( voice.currentPitch, Array.get 0 voice.notes ) of
+        ( Just pitch, Just firstNote ) ->
+            if pitch > 0 then
+                Instrument.fretDistance (floor (pitch - firstNote))
 
             else
                 Instrument.width
 
-        Nothing ->
+        _ ->
             Instrument.width
 
 
@@ -298,8 +298,11 @@ viewStringAnimation voice index time =
             else
                 Instrument.width
 
+        pitch =
+            Maybe.withDefault 0 voice.currentPitch
+
         values_ =
-            viewStringAnimationValues activeFretX_ (stringY index) Instrument.width (44000 / (voice.currentPitch * voice.currentPitch)) amplitude
+            viewStringAnimationValues activeFretX_ (stringY index) Instrument.width (44000 / (pitch * pitch)) amplitude
     in
     Svg.animate [ Sattr.attributeName "d", Sattr.values (joinAnimationValues values_), Sattr.dur (String.fromInt stringAnimationDurationMS ++ "ms"), Sattr.repeatCount "indefinite" ] []
 
@@ -349,10 +352,11 @@ viewDebugNotes model =
 
 viewDebugPlayingNotes : Instrument.Model -> String
 viewDebugPlayingNotes model =
-    String.join " "
-        (List.map (\voice -> String.fromFloat voice.currentPitch)
-            (Array.toList model.voices)
-        )
+    Array.toList model.voices
+        |> List.map (\voice -> voice.currentPitch)
+        |> List.filterMap identity
+        |> List.map (\pitch -> String.fromFloat pitch)
+        |> String.join " "
 
 
 viewDebugging : Instrument.Model -> List (Svg.Svg msg)
