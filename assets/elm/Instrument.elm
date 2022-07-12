@@ -188,7 +188,7 @@ setChordComponent voiceIndex maybePitch model =
 chordNotes : Volume -> Model -> List PortMessage.PlaySoundRecord
 chordNotes volume model =
     Array.toList model.voices
-        |> List.indexedMap (\index voice -> voice.currentPitch |> Maybe.map (\pitch -> { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = volume }))
+        |> List.indexedMap (\index voice -> voice.currentPitch |> Maybe.map (\pitch -> PortMessage.PlaySoundRecord "acoustic-guitar" index pitch volume))
         |> List.filterMap identity
 
 

@@ -60,8 +60,8 @@ testMessagesForMappedChord =
 
                 chord =
                     [ Nothing
-                    , Just 3
-                    , Just 5
+                    , Just 0
+                    , Just 2
                     ]
 
                 instrument =
@@ -69,7 +69,7 @@ testMessagesForMappedChord =
                         |> Instrument.setActiveChord chord
 
                 expected =
-                    [ PortMessage.PlaySoundRecord "acoustic-guitar" 1 3.0 4.2
+                    [ PortMessage.PlaySoundRecord "acoustic-guitar" 1 2.0 4.2
                     , PortMessage.PlaySoundRecord "acoustic-guitar" 2 5.0 4.2
                     ]
             in
