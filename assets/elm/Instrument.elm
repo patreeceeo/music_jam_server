@@ -1,15 +1,13 @@
-module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width)
+module Instrument exposing (Model, Voice, decoder, fretCount, fretDistance, fretIndex, fretWidth, height, init, initVoice, isInlayFret, mapActiveChord, messagesForMappedChord, pitchAtOffset, setActiveChord, setCurrentPitch, setCurrentVolume, setLastNoteStartTime, update, width, currentPitch)
 
 import Array exposing (Array)
 import Chord
-import CommonTypes exposing (NoteVIndex, Pitch, QTime, Volume)
+import CommonTypes exposing (NoteVIndex, Pitch, QTime, Selectors, Volume)
 import Json.Decode as D
-import KbdEvent
 import List.Extra
 import Maybe.Extra
 import Message exposing (Message)
 import PortMessage
-import Selectors
 import Svg.Attributes exposing (..)
 
 
@@ -125,6 +123,16 @@ setCurrentPitch pitch voiceIndex instrument =
                     |> asVoiceIn voiceIndex instrument
             )
 
+currentPitch : Int -> Model -> Maybe Pitch
+currentPitch voiceIndex instrument =
+  case voiceAt voiceIndex instrument of
+    Just voice ->
+      Just voice.currentPitch
+    _ ->
+      Nothing
+
+
+
 
 setCurrentVolume : Float -> Int -> Model -> Model
 setCurrentVolume volume voiceIndex instrument =
@@ -204,46 +212,30 @@ messagesForMappedChord chord volume =
 
 -- UPDATE
 
+debugMsg : String -> Message -> Message
+debugMsg str msg =
+  case msg of
+    Message.AnimationFrame _ ->
+      msg
+    _ ->
+      Debug.log str msg
 
-update : Message -> Model -> Selectors.Selectors -> ( Model, Cmd Message )
+update : Message -> Model -> Selectors -> ( Model, Cmd Message )
 update msg instrument select =
     let
         timeInMillis =
             select.timeInMillis ()
     in
-    case msg of
+    case debugMsg "instrument msg" msg of
         Message.PlayChord volume ->
             handlePlayChord volume timeInMillis instrument
 
-        Message.KeyUp event ->
-            let
-                milisSinceKeyDown =
-                    select.milisSinceKeyDown event.key
+        Message.PlayNote volume voiceIndex pitch ->
+          ( playNote voiceIndex pitch volume timeInMillis instrument
+          , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+          )
 
-                volume =
-                    intensityOfKeyPress milisSinceKeyDown
-            in
-            case event.key of
-                KbdEvent.KeySpace ->
-                    handlePlayChord volume timeInMillis instrument
-
-                _ ->
-                    let
-                        default =
-                            ( instrument, Cmd.none )
-                    in
-                    voiceIndexForKey event.key
-                        |> Maybe.Extra.unwrap default
-                            (\voiceIndex ->
-                                noteAt 0 voiceIndex instrument
-                                    |> Maybe.Extra.unwrap default
-                                        (\pitch ->
-                                            ( playNote voiceIndex pitch volume timeInMillis instrument
-                                            , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
-                                            )
-                                        )
-                            )
-
+        -- TODO replace MouseOverVoice with PlayNote
         Message.MouseOverVoice index event ->
             let
                 screenWidth =
@@ -271,7 +263,7 @@ update msg instrument select =
                 chord =
                     Chord.forName chordName
             in
-            if Debug.log "SelectChord" chordName /= Chord.X_Chord then
+            if chordName /= Chord.X_Chord then
                 ( setActiveChord chord instrument, Cmd.none )
 
             else
@@ -280,7 +272,7 @@ update msg instrument select =
         Message.ReceivePortMessage rawMsg ->
             case PortMessage.decode rawMsg of
                 Ok playSound ->
-                    case Debug.log "PlaySound data" playSound.data of
+                    case playSound.data of
                         PortMessage.PlaySound data ->
                             ( playNote data.voiceIndex data.pitch data.volume timeInMillis instrument
                             , Cmd.none
@@ -406,31 +398,3 @@ noteAt noteIndex voiceIndex model =
         |> Maybe.andThen (\voice -> Array.get noteIndex voice.notes)
 
 
-voiceIndexForKey : KbdEvent.Key -> Maybe Int
-voiceIndexForKey key =
-    case key of
-        KbdEvent.KeyS ->
-            Just 0
-
-        KbdEvent.KeyD ->
-            Just 1
-
-        KbdEvent.KeyF ->
-            Just 2
-
-        KbdEvent.KeyJ ->
-            Just 3
-
-        KbdEvent.KeyK ->
-            Just 4
-
-        KbdEvent.KeyL ->
-            Just 5
-
-        _ ->
-            Nothing
-
-
-intensityOfKeyPress : Int -> Float
-intensityOfKeyPress milisSinceKeyDown =
-    Basics.min 100 (toFloat milisSinceKeyDown / 100)

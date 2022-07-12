@@ -14,6 +14,10 @@ type Key
     | KeyK
     | KeyL
     | KeySpace
+    | KeyLeft
+    | KeyRight
+    | KeyUp
+    | KeyDown
 
 
 type alias Model =
@@ -71,5 +75,17 @@ keyFromString str =
         "Space" ->
             D.succeed KeySpace
 
+        "ArrowRight" ->
+            D.succeed KeyRight
+
+        "ArrowLeft" ->
+            D.succeed KeyLeft
+
+        "ArrowUp" ->
+            D.succeed KeyUp
+
+        "ArrowDown" ->
+            D.succeed KeyDown
+
         _ ->
-            D.fail ("invalid key code " ++ str)
+            D.fail (Debug.log "" ("invalid key code " ++ str))

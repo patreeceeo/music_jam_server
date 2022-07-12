@@ -1,5 +1,7 @@
 module Modely exposing (Composer, compose)
 
+import Utils
+
 
 type alias Getter model subModel =
     model -> subModel
@@ -17,27 +19,11 @@ type alias Composer msg model subModel selectors updateReturn =
     ( Getter model subModel, Updater msg subModel selectors updateReturn, Setter model subModel )
 
 
-
--- type alias Selectors selectorCall =
---     selectorCall -> selectorCall
--- Like List.Extra.mapAccumr but simpler
-
-
-mapAccumr : (a -> b -> a) -> a -> List b -> a
-mapAccumr f acc0 list =
-    List.foldr
-        (\x acc1 ->
-            f acc1 x
-        )
-        acc0
-        list
-
-
 compose : List (Composer msg model subModel selectors ( subModel, cmd )) -> (List cmd -> cmd) -> (model -> selectors) -> msg -> model -> ( model, cmd )
 compose clist batchCmds selectors msg model =
     let
         ( newModel, cmdList ) =
-            mapAccumr (runComposer msg model (selectors model)) ( model, [] ) clist
+            Utils.mapAccumr (runComposer msg model (selectors model)) ( model, [] ) clist
     in
     ( newModel, batchCmds cmdList )
 

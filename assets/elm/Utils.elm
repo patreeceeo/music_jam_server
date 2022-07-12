@@ -1,4 +1,14 @@
-module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
+module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, tagReturnWith, tagReturnWithP2, untagP1, untagP2, mapAccumr)
+
+-- Like List.Extra.mapAccumr but simpler
+mapAccumr : (a -> b -> a) -> a -> List b -> a
+mapAccumr f acc0 list =
+    List.foldr
+        (\x acc1 ->
+            f acc1 x
+        )
+        acc0
+        list
 
 
 joinNums : String -> List Float -> String

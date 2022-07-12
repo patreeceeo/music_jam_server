@@ -5,8 +5,8 @@ import KbdEvent
 import KbdState
 import Message exposing (Message)
 import PortMessage
-import Selectors
 import Time
+import CommonTypes exposing (Selectors)
 
 
 {-| Foundational bits and bytes that encapsulate and abstract the host system i.e. Web browser
@@ -55,7 +55,7 @@ setError message model =
 -- UPDATE
 
 
-update : Message -> Model -> Selectors.Selectors -> ( Model, Cmd Message )
+update : Message -> Model -> Selectors -> ( Model, Cmd Message )
 update msg model _ =
     let
         cmd =
@@ -77,16 +77,23 @@ update msg model _ =
             ( { model | screenWidth = width }, cmd )
 
         ( Message.KeyDown event, AppActive ) ->
+          let
+              newKbdState = KbdState.setPressed event.key True model.timeInMillis model.kbdState
+          in
+            ( { model | kbdState = newKbdState}, cmd )
+
+        ( Message.KeyUp event, AppActive ) ->
             let
                 newKeyState =
-                    case KbdState.get event.key model.kbdState of
-                        Just keyState ->
-                            { keyState | lastPressedAt = model.timeInMillis }
-
-                        Nothing ->
-                            { lastPressedAt = model.timeInMillis }
+                  case KbdState.get event.key model.kbdState of
+                    Just keyState ->
+                      { keyState | pressedState = KbdState.KeyIsReleased }
+                    Nothing ->
+                      { lastPressedAt = 0
+                      , pressedState = KbdState.KeyIsReleased
+                      }
             in
-            ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, cmd )
+                ( { model | kbdState = KbdState.set event.key newKeyState model.kbdState }, Cmd.none)
 
         _ ->
             ( model, cmd )

@@ -1,9 +1,12 @@
 module Main exposing (Model, SubModels(..), main, update, view)
 
+-- TODO remove
+
 import Browser
 import Browser.Events
 import Browser.Navigation
 import Chord
+import CommonTypes exposing (Routes(..), Selectors)
 import Errors
 import Html
 import Html.Attributes
@@ -15,9 +18,9 @@ import Message exposing (Message)
 import Modely
 import OperatingSystem as OS
 import PortMessage
-import Router exposing (Routes(..))
-import Selectors
+import Router
 import Url exposing (Url)
+import User.Interface exposing (seekDirectionForKey)
 import User.Interface.Instrument exposing (viewSelectChord)
 import UserInterfaces as UIs
 import Utils
@@ -112,7 +115,7 @@ type SubModels
 -- UPDATE
 
 
-composers : List (Modely.Composer Message Model SubModels Selectors.Selectors ( SubModels, Cmd Message ))
+composers : List (Modely.Composer Message Model SubModels Selectors ( SubModels, Cmd Message ))
 composers =
     [ ( getOs
       , mapOs OS.update
@@ -135,16 +138,94 @@ composers =
 
 {-| Create functions that can be used in subModel update functions to access other parts of the model
 -}
-bindSelectors : Model -> Selectors.Selectors
+bindSelectors : Model -> Selectors
 bindSelectors model =
     { milisSinceKeyDown = \key -> OS.milisSinceKeyDown key model.os
     , timeInMillis = \() -> model.os.timeInMillis
     , screenWidth = \() -> model.os.screenWidth
+    , currentRoute = \() -> model.router.currentRoute
     }
 
 
 update : Message -> Model -> ( Model, Cmd Message )
-update =
+update msg model =
+    -- Translate route/message combinations into new messages for sub module updates
+    let
+        maybeMappedMsg = case ( model.router.currentRoute, msg ) of
+          ( Just MainRoute, Message.KeyUp event ) ->
+              let
+                  milisSinceKeyDown =
+                      OS.milisSinceKeyDown event.key model.os
+
+                  volume =
+                      User.Interface.intensityOfKeyPress milisSinceKeyDown
+              in
+                case event.key of
+                  KbdEvent.KeySpace ->
+                    Just (Message.PlayChord volume)
+
+                  _ ->
+                      Maybe.map2 (\instrument voiceIndex ->
+                        Instrument.currentPitch voiceIndex instrument
+                          |> Maybe.andThen (\pitch ->
+                            Just (Message.PlayNote volume voiceIndex pitch)
+                          )
+                      )
+                      (model.instrument)
+                      (User.Interface.voiceIndexForKey event.key)
+                        |> Maybe.Extra.join
+
+          ( Just SelectChordRoute, Message.KeyDown event ) ->
+              if model.router.currentRoute == Just SelectChordRoute then
+                  let
+                      newChordName =
+                          case seekDirectionForKey event.key of
+                              User.Interface.SeekForward ->
+                                  Chord.next model.uiInstrument.activeChord
+
+                              User.Interface.SeekBackward ->
+                                  Chord.previous model.uiInstrument.activeChord
+
+                              User.Interface.NoSeek ->
+                                  model.uiInstrument.activeChord
+                  in
+                    Just (Message.SelectChord newChordName)
+
+              else
+                  Nothing
+
+          _ ->
+              Nothing
+    in
+      -- Send original message as well as mapped message (if there is one)
+      case maybeMappedMsg of
+        Just mappedMsg ->
+          updateSubsX [mappedMsg, msg] model
+        Nothing ->
+          updateSubs msg model
+
+-- TODO this is similar to code in Modely
+updateSubsX : List Message -> Model -> (Model, Cmd Message)
+updateSubsX msgList model =
+  let
+      (finalModel, cmdList) = Utils.mapAccumr updateSubsFold (model, []) msgList
+  in
+    (finalModel, Cmd.batch cmdList)
+
+updateSubsFold : (Model, List (Cmd Message)) -> Message -> (Model, List (Cmd Message))
+updateSubsFold acc msg =
+    let
+        ( accModel, accCmd ) =
+            acc
+
+        ( newModel, newCmd ) =
+            updateSubs msg accModel
+    in
+    ( newModel, List.append [ newCmd ] accCmd )
+
+
+updateSubs : Message -> Model -> ( Model, Cmd Message )
+updateSubs =
     Modely.compose composers Cmd.batch bindSelectors
 
 
@@ -282,7 +363,7 @@ untagUIInstrument tagged =
 -}
 
 
-mapOs : (Message -> OS.Model -> Selectors.Selectors -> ( OS.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapOs : (Message -> OS.Model -> Selectors -> ( OS.Model, Cmd Message )) -> Message -> SubModels -> Selectors -> ( SubModels, Cmd Message )
 mapOs update_ msg taggedModel selectors =
     case untagOs taggedModel of
         Just os ->
@@ -292,7 +373,7 @@ mapOs update_ msg taggedModel selectors =
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
 
 
-mapInstrument : (Message -> Instrument.Model -> Selectors.Selectors -> ( Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapInstrument : (Message -> Instrument.Model -> Selectors -> ( Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors -> ( SubModels, Cmd Message )
 mapInstrument update_ msg taggedModel selectors =
     case untagInstrument taggedModel of
         Just instrument ->
@@ -302,7 +383,7 @@ mapInstrument update_ msg taggedModel selectors =
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
 
 
-mapRouter : (Message -> Router.Model -> Selectors.Selectors -> ( Router.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapRouter : (Message -> Router.Model -> Selectors -> ( Router.Model, Cmd Message )) -> Message -> SubModels -> Selectors -> ( SubModels, Cmd Message )
 mapRouter update_ msg taggedModel selectors =
     case untagRouter taggedModel of
         Just model ->
@@ -312,7 +393,7 @@ mapRouter update_ msg taggedModel selectors =
             ( Debug.log "received unexpected type " taggedModel, Cmd.none )
 
 
-mapUIInstrument : (Message -> User.Interface.Instrument.Model -> Selectors.Selectors -> ( User.Interface.Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors.Selectors -> ( SubModels, Cmd Message )
+mapUIInstrument : (Message -> User.Interface.Instrument.Model -> Selectors -> ( User.Interface.Instrument.Model, Cmd Message )) -> Message -> SubModels -> Selectors -> ( SubModels, Cmd Message )
 mapUIInstrument update_ msg taggedModel selectors =
     case untagUIInstrument taggedModel of
         Just model ->
@@ -361,7 +442,7 @@ body model =
     [ UIs.navMenu
     , Maybe.Extra.unwrap fallbackHtml
         (\currentRoute ->
-            if List.member currentRoute [ Router.Main, Router.SelectChord ] then
+            if List.member currentRoute [ MainRoute, SelectChordRoute ] then
                 Maybe.Extra.unwrap fallbackHtml
                     (\instrument ->
                         let
@@ -378,7 +459,7 @@ body model =
                                 [ instrumentHtml, currentChord, selectChordLink ]
                         in
                         Html.div []
-                            (if currentRoute == Router.SelectChord then
+                            (if currentRoute == SelectChordRoute then
                                 defaultHtml ++ [ viewSelectChord model.uiInstrument ]
 
                              else
