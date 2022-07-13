@@ -44,6 +44,8 @@ keyOrder =
     , KeyRight
     , KeyUp
     , KeyDown
+    , KeyEsc
+    , KeyEnter
     ]
 
 

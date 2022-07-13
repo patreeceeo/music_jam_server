@@ -1,4 +1,4 @@
-module Utils exposing (PathSegment, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, mapAccumr, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
+module Utils exposing (PathSegment, debugUnless, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, mapAccumr, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
 
 -- Like List.Extra.mapAccumr but simpler
 

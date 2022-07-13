@@ -7,7 +7,8 @@
         flags: {
           screenWidth: window.innerWidth,
           instrument: <%= raw instrument() %>,
-          clientId: "<%= csrf_token_value() %>"
+          clientId: "<%= csrf_token_value() %>",
+          baseHref: location.origin + "/lab"
         }
       }
 

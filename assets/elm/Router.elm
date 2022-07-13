@@ -2,16 +2,20 @@ module Router exposing (Model, init, update)
 
 import Browser
 import Browser.Navigation
+import CommonTypes exposing (Routes(..), Selectors)
+import List.Extra
 import Message exposing (Message)
 import Url exposing (Url)
 import Url.Parser exposing ((</>), map, oneOf, s)
-import CommonTypes exposing (Routes(..), Selectors)
+import Utils
 
 
 type alias Model =
     { currentRoute : Maybe Routes
     , key : Browser.Navigation.Key
+    , history : List Url
     }
+
 
 routeParser : Url.Parser.Parser (Routes -> a) a
 routeParser =
@@ -34,6 +38,7 @@ init : Url -> Browser.Navigation.Key -> Model
 init url key =
     { currentRoute = Debug.log "init route" (urlToRoute url)
     , key = key
+    , history = [ url ]
     }
 
 
@@ -46,16 +51,13 @@ update msg model _ =
                     let
                         urlString =
                             Url.toString url
-
-                        newModel =
-                            { model | currentRoute = urlToRoute url }
                     in
                     case urlToRoute url of
                         Just FaqRoute ->
-                            ( newModel, Browser.Navigation.load urlString )
+                            ( model, Browser.Navigation.load urlString )
 
                         _ ->
-                            ( newModel
+                            ( { model | history = List.append model.history [ url ], currentRoute = urlToRoute url }
                             , Browser.Navigation.pushUrl model.key urlString
                             )
 
@@ -68,10 +70,22 @@ update msg model _ =
             ( { model | currentRoute = urlToRoute url }, Cmd.none )
 
         Message.RequestPreviousUrl n ->
-            -- will this trigger a UrlChange message? if not, need to update the model here
-            ( model, Browser.Navigation.back model.key n )
+            let
+                newHistory =
+                    pop n model.history
+            in
+            case List.Extra.last newHistory of
+                Just previousUrl ->
+                    -- will this trigger a UrlChange message? if not, need to update the model here
+                    ( { model | currentRoute = urlToRoute previousUrl, history = newHistory }, Browser.Navigation.back model.key n )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
 
 
+pop : Int -> List a -> List a
+pop n list =
+    List.take (List.length list - n) list

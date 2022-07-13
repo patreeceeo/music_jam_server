@@ -52,3 +52,7 @@ kbd {
 .b--inset {
   border-style: inset;
 }
+
+.bgn {
+  background: none;
+}

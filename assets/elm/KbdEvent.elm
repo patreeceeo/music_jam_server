@@ -18,6 +18,8 @@ type Key
     | KeyRight
     | KeyUp
     | KeyDown
+    | KeyEsc
+    | KeyEnter
 
 
 type alias Model =
@@ -86,6 +88,12 @@ keyFromString str =
 
         "ArrowDown" ->
             D.succeed KeyDown
+
+        "Escape" ->
+            D.succeed KeyEsc
+
+        "Enter" ->
+            D.succeed KeyEnter
 
         _ ->
             D.fail (Debug.log "" ("invalid key code " ++ str))

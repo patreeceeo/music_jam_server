@@ -1,21 +1,45 @@
-module User.Interface exposing (seekDirectionForKey, SeekDirection(..), voiceIndexForKey, intensityOfKeyPress)
+module User.Interface exposing (UserAction(..), intensityOfKeyPress, userActionForKey, voiceIndexForKey)
 
 import KbdEvent
 
-type SeekDirection = SeekForward | SeekBackward | NoSeek
-seekDirectionForKey: KbdEvent.Key -> SeekDirection
-seekDirectionForKey key =
-  case key of
-    KbdEvent.KeyLeft ->
-      SeekBackward
-    KbdEvent.KeyRight ->
-      SeekForward
-    KbdEvent.KeyUp ->
-      SeekBackward
-    KbdEvent.KeyDown ->
-      SeekForward
-    _ ->
-      NoSeek
+
+type UserAction
+    = SeekForward
+    | SeekBackward
+    | Dismiss
+    | Open
+    | NoAction
+
+
+userActionForKey : KbdEvent.Key -> UserAction
+userActionForKey key =
+    case key of
+        KbdEvent.KeyJ ->
+            SeekForward
+
+        KbdEvent.KeyK ->
+            SeekForward
+
+        KbdEvent.KeyLeft ->
+            SeekBackward
+
+        KbdEvent.KeyRight ->
+            SeekForward
+
+        KbdEvent.KeyUp ->
+            SeekBackward
+
+        KbdEvent.KeyDown ->
+            SeekForward
+
+        KbdEvent.KeyEsc ->
+            Dismiss
+
+        KbdEvent.KeyEnter ->
+            Open
+
+        _ ->
+            NoAction
 
 
 voiceIndexForKey : KbdEvent.Key -> Maybe Int

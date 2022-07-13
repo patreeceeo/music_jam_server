@@ -20,7 +20,7 @@ import OperatingSystem as OS
 import PortMessage
 import Router
 import Url exposing (Url)
-import User.Interface exposing (seekDirectionForKey)
+import User.Interface exposing (userActionForKey)
 import User.Interface.Instrument exposing (viewSelectChord)
 import UserInterfaces as UIs
 import Utils
@@ -49,6 +49,7 @@ main =
 type alias Flags =
     { clientId : ClientId
     , screenWidth : Int
+    , baseHref : String
     , instrument : Instrument.Model
     }
 
@@ -65,7 +66,7 @@ init flags url navKey =
                 instrument =
                     Just decodedFlags.instrument
             in
-            ( { os = OS.init decodedFlags.clientId decodedFlags.screenWidth
+            ( { os = OS.init decodedFlags.clientId decodedFlags.screenWidth decodedFlags.baseHref
               , instrument = instrument
               , router = router
               , uiInstrument = User.Interface.Instrument.init
@@ -81,7 +82,7 @@ init flags url navKey =
                 errMsgWithContext =
                     Errors.instrumentDecoding errMsg
             in
-            ( { os = OS.setError errMsgWithContext (OS.init "" 0)
+            ( { os = OS.setError errMsgWithContext (OS.init "" 0 "")
               , instrument = Nothing
               , router = router
               , uiInstrument = User.Interface.Instrument.init
@@ -92,9 +93,10 @@ init flags url navKey =
 
 decodeFlags : D.Decoder Flags
 decodeFlags =
-    D.map3 Flags
+    D.map4 Flags
         (D.field "clientId" D.string)
         (D.field "screenWidth" D.int)
+        (D.field "baseHref" D.string)
         (D.field "instrument" Instrument.decoder)
 
 
@@ -163,6 +165,19 @@ update msg model =
                     else
                         [ msg ]
 
+                ( Just MainRoute, Message.KeyDown event ) ->
+                    case event.key of
+                        KbdEvent.KeyEnter ->
+                            case Url.fromString (model.os.baseHref ++ "/selectchord") of
+                                Just url ->
+                                    [ msg, Message.UrlRequest (Browser.Internal url) ]
+
+                                Nothing ->
+                                    [ msg ]
+
+                        _ ->
+                            [ msg ]
+
                 ( Just MainRoute, Message.KeyUp event ) ->
                     let
                         milisSinceKeyDown =
@@ -190,23 +205,28 @@ update msg model =
                                 |> Maybe.withDefault [ msg ]
 
                 ( Just SelectChordRoute, Message.KeyDown event ) ->
-                    if model.router.currentRoute == Just SelectChordRoute then
-                        let
-                            newChordName =
-                                case seekDirectionForKey event.key of
-                                    User.Interface.SeekForward ->
-                                        Chord.next model.uiInstrument.activeChordName
+                    let
+                        userAction =
+                            userActionForKey event.key
+                    in
+                    case userAction of
+                        User.Interface.Dismiss ->
+                            [ msg, Message.RequestPreviousUrl 1 ]
 
-                                    User.Interface.SeekBackward ->
-                                        Chord.previous model.uiInstrument.activeChordName
+                        _ ->
+                            let
+                                newChordName =
+                                    case userAction of
+                                        User.Interface.SeekForward ->
+                                            Chord.next model.uiInstrument.activeChordName
 
-                                    User.Interface.NoSeek ->
-                                        model.uiInstrument.activeChordName
-                        in
-                        [ msg, Message.SelectChord newChordName ]
+                                        User.Interface.SeekBackward ->
+                                            Chord.previous model.uiInstrument.activeChordName
 
-                    else
-                        [ msg ]
+                                        _ ->
+                                            model.uiInstrument.activeChordName
+                            in
+                            [ msg, Message.SelectChord newChordName ]
 
                 _ ->
                     [ msg ]
