@@ -44,13 +44,14 @@ type Routes
     = FaqRoute
     | MainRoute
     | SelectChordRoute
+    | NotARoute
 
 
 type alias Selectors =
     { milisSinceKeyDown : KbdEvent.Key -> Int
     , timeInMillis : () -> Int
     , screenWidth : () -> Int
-    , currentRoute : () -> Maybe Routes
+    , currentRoute : () -> Routes
     }
 
 

@@ -147,7 +147,7 @@ bindSelectors model =
     { milisSinceKeyDown = \key -> OS.milisSinceKeyDown key model.os
     , timeInMillis = \() -> model.os.timeInMillis
     , screenWidth = \() -> model.os.screenWidth
-    , currentRoute = \() -> model.router.currentRoute
+    , currentRoute = \() -> Router.currentRoute model.router
     }
 
 
@@ -156,8 +156,8 @@ update msg model =
     -- Translate route/message combinations into new messages for sub module updates
     let
         mappedMsgs =
-            case ( model.router.currentRoute, msg ) of
-                -- Ignore messages originating from this client
+            case ( Router.currentRoute model.router, msg ) of
+                -- Ignore messages sent to self
                 ( _, Message.ReceivePortMessage clientId _ ) ->
                     if clientId == model.os.clientId then
                         []
@@ -165,10 +165,10 @@ update msg model =
                     else
                         [ msg ]
 
-                ( Just MainRoute, Message.KeyDown event ) ->
+                ( MainRoute, Message.KeyDown event ) ->
                     case event.key of
                         KbdEvent.KeyEnter ->
-                            case Url.fromString (model.os.baseHref ++ "/selectchord") of
+                            case Url.fromString (Debug.log "requesting" (model.os.baseHref ++ "/selectchord")) of
                                 Just url ->
                                     [ msg, Message.UrlRequest (Browser.Internal url) ]
 
@@ -178,7 +178,7 @@ update msg model =
                         _ ->
                             [ msg ]
 
-                ( Just MainRoute, Message.KeyUp event ) ->
+                ( MainRoute, Message.KeyUp event ) ->
                     let
                         milisSinceKeyDown =
                             OS.milisSinceKeyDown event.key model.os
@@ -204,7 +204,7 @@ update msg model =
                                 (User.Interface.voiceIndexForKey event.key)
                                 |> Maybe.withDefault [ msg ]
 
-                ( Just SelectChordRoute, Message.KeyDown event ) ->
+                ( SelectChordRoute, Message.KeyDown event ) ->
                     let
                         userAction =
                             userActionForKey event.key
@@ -446,8 +446,8 @@ mapUIInstrument update_ msg taggedModel selectors =
 subscriptions : Model -> Sub Message
 subscriptions model =
     Sub.batch
-        [ Browser.Events.onAnimationFrame Message.AnimationFrame
-        , Browser.Events.onResize (\w _ -> Message.WindowResize w)
+        -- [ Browser.Events.onAnimationFrame Message.AnimationFrame
+        [ Browser.Events.onResize (\w _ -> Message.WindowResize w)
         , Browser.Events.onVisibilityChange Message.VisibilityChange
         , Browser.Events.onKeyDown (KbdEvent.decode |> D.map Message.KeyDown)
         , Browser.Events.onKeyUp (KbdEvent.decode |> D.map Message.KeyUp)
@@ -469,43 +469,39 @@ view model =
 body : Model -> List (Html.Html Message.Message)
 body model =
     let
-        maybeCurrentRoute =
-            model.router.currentRoute
+        currentRoute =
+            Router.currentRoute model.router
 
         fallbackHtml =
             Html.p [] [ Html.text model.os.errorMessage ]
     in
     [ UIs.navMenu
-    , Maybe.Extra.unwrap fallbackHtml
-        (\currentRoute ->
-            if List.member currentRoute [ MainRoute, SelectChordRoute ] then
-                Maybe.Extra.unwrap fallbackHtml
-                    (\instrument ->
-                        let
-                            instrumentHtml =
-                                UIs.instrument instrument model.os Message.MouseOverVoice
+    , if List.member currentRoute [ MainRoute, SelectChordRoute ] then
+        Maybe.Extra.unwrap fallbackHtml
+            (\instrument ->
+                let
+                    instrumentHtml =
+                        UIs.instrument instrument model.os Message.MouseOverVoice
 
-                            selectChordLink =
-                                Html.a [ Html.Attributes.href "/lab/selectchord" ] [ Html.text "[change]" ]
+                    selectChordLink =
+                        Html.a [ Html.Attributes.href "/lab/selectchord" ] [ Html.text "[change]" ]
 
-                            currentChord =
-                                Html.span [] [ Html.text ("chord: " ++ Chord.nameToStr model.uiInstrument.activeChordName) ]
+                    currentChord =
+                        Html.span [] [ Html.text ("chord: " ++ Chord.nameToStr model.uiInstrument.activeChordName) ]
 
-                            defaultHtml =
-                                [ instrumentHtml, currentChord, selectChordLink ]
-                        in
-                        Html.div []
-                            (if currentRoute == SelectChordRoute then
-                                defaultHtml ++ [ viewSelectChord model.uiInstrument ]
+                    defaultHtml =
+                        [ instrumentHtml, currentChord, selectChordLink ]
+                in
+                Html.div []
+                    (if currentRoute == SelectChordRoute then
+                        defaultHtml ++ [ viewSelectChord model.uiInstrument ]
 
-                             else
-                                defaultHtml
-                            )
+                     else
+                        defaultHtml
                     )
-                    model.instrument
+            )
+            model.instrument
 
-            else
-                fallbackHtml
-        )
-        maybeCurrentRoute
+      else
+        fallbackHtml
     ]
