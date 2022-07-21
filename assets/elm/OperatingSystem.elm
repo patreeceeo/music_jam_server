@@ -29,7 +29,6 @@ type AppState
 
 type alias Model =
     { clientId : ClientId
-    , baseHref : String
     , appState : AppState
     , timeInMillis : Int
     , screenWidth : Int
@@ -38,10 +37,9 @@ type alias Model =
     }
 
 
-init : ClientId -> Int -> String -> Model
-init clientId screenWidth baseHref =
+init : ClientId -> Int -> Model
+init clientId screenWidth =
     { clientId = clientId
-    , baseHref = baseHref
     , appState = AppActive
     , timeInMillis = 0
     , kbdState = KbdState.init

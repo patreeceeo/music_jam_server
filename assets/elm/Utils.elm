@@ -1,6 +1,15 @@
-module Utils exposing (PathSegment, debugUnless, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, mapAccumr, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
+module Utils exposing (PathSegment, TestableNavKey(..), debugUnless, flip3, joinAnimationValues, joinNums, joinPathSegments, joinPoints, loopInt, mapAccumr, tagReturnWith, tagReturnWithP2, untagP1, untagP2)
+
+import Browser.Navigation
+
+
 
 -- Like List.Extra.mapAccumr but simpler
+
+
+type TestableNavKey
+    = ActualNavKey Browser.Navigation.Key
+    | TestNavKey
 
 
 mapAccumr : (a -> b -> a) -> a -> List b -> a

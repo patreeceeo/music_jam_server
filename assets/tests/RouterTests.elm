@@ -7,6 +7,7 @@ import Message
 import Router
 import Test exposing (..)
 import Url
+import Utils exposing (TestableNavKey(..))
 
 
 suite : Test
@@ -17,8 +18,10 @@ suite =
 
 model : Router.Model
 model =
-    { key = Router.TestNavKey
+    { key = TestNavKey
     , history = []
+    , baseHref = "://"
+    , nextRoute = MainRoute
     }
 
 
@@ -53,7 +56,7 @@ testUpdate =
                                 Expect.equal model newModel
                         , test "command" <|
                             \_ ->
-                                Expect.equal cmd (Router.PushUrl Router.TestNavKey exampleUrlStringA)
+                                Expect.equal cmd (Router.PushUrl TestNavKey exampleUrlStringA)
                         ]
                      )
                         ()
@@ -102,7 +105,7 @@ testUpdate =
                                 Expect.equal model newerModel
                         , test "command" <|
                             \_ ->
-                                Expect.equal cmd (Router.GoBack Router.TestNavKey 2)
+                                Expect.equal cmd (Router.GoBack TestNavKey 2)
                         ]
                      )
                         ()

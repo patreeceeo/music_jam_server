@@ -1,4 +1,4 @@
-module Router exposing (Model, NavCmd(..), NavKey(..), currentRoute, init, update, update_)
+module Router exposing (Model, NavCmd(..), currentRoute, init, routeToUrl, update, update_)
 
 import Browser
 import Browser.Navigation
@@ -6,24 +6,23 @@ import CommonTypes exposing (Routes(..), Selectors)
 import List.Extra
 import Message exposing (Message)
 import Url exposing (Url)
+import Url.Builder
 import Url.Parser exposing ((</>), map, oneOf, s)
-
-
-type NavKey
-    = ActualNavKey Browser.Navigation.Key
-    | TestNavKey
+import Utils exposing (TestableNavKey(..))
 
 
 type NavCmd
-    = PushUrl NavKey String
-    | GoBack NavKey Int
+    = PushUrl TestableNavKey String
+    | GoBack TestableNavKey Int
     | Load String
     | NoCmd
 
 
 type alias Model =
-    { key : NavKey
+    { key : TestableNavKey
     , history : List Routes
+    , baseHref : String
+    , nextRoute : Routes
     }
 
 
@@ -45,10 +44,34 @@ urlToRoute url =
         |> Maybe.withDefault NotARoute
 
 
-init : Url -> Browser.Navigation.Key -> Model
-init url key =
-    { key = ActualNavKey key
-    , history = [ urlToRoute url ]
+routeToUrl : Routes -> String
+routeToUrl route =
+    case route of
+        MainRoute ->
+            Url.Builder.absolute [ "lab", "fretboard" ] []
+
+        SelectChordRoute ->
+            Url.Builder.absolute [ "lab", "selectchord" ] []
+
+        FaqRoute ->
+            Url.Builder.absolute [ "faq" ] []
+
+        NotARoute ->
+            "/404"
+
+
+init : Maybe Url -> TestableNavKey -> String -> Routes -> Model
+init maybeUrl key baseHref nextRoute =
+    { key = key
+    , history =
+        case maybeUrl of
+            Just url ->
+                [ urlToRoute url ]
+
+            Nothing ->
+                []
+    , baseHref = baseHref
+    , nextRoute = nextRoute
     }
 
 
@@ -120,9 +143,13 @@ update msg model _ =
     ( newModel, cmd )
 
 
+
+-- TODO(perf): push current route onto beginning of list
+
+
 currentRoute : Model -> Routes
 currentRoute model =
-    List.Extra.last (Debug.log "history" model.history)
+    List.Extra.last model.history
         |> Maybe.withDefault NotARoute
 
 

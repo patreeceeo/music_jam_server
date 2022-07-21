@@ -3,7 +3,7 @@ module Message exposing (Message(..))
 import Browser
 import Browser.Events
 import Chord
-import CommonTypes exposing (ClientId, Inputs, NoteVIndex, Pitch, Volume)
+import CommonTypes exposing (ClientId, Inputs, NoteVIndex, Pitch, Routes(..), Volume)
 import KbdEvent
 import MouseEvent
 import PortMessage

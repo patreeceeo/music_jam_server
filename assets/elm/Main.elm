@@ -1,4 +1,4 @@
-module Main exposing (Model, SubModels(..), main, update, view)
+module Main exposing (Context(..), Model, SubModels(..), bindSelectors, contextualize, init, interpret, main, update, view)
 
 -- TODO remove
 
@@ -6,8 +6,9 @@ import Browser
 import Browser.Events
 import Browser.Navigation
 import Chord
-import CommonTypes exposing (ClientId, Routes(..), Selectors)
+import CommonTypes exposing (ClientId, Pitch, Routes(..), Selectors, Volume)
 import Errors
+import Flags
 import Html
 import Html.Attributes
 import Instrument
@@ -33,7 +34,7 @@ import Utils
 main : Program D.Value Model Message
 main =
     Browser.application
-        { init = init
+        { init = Flags.tryDecodingFor (wrapInit init)
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -46,29 +47,24 @@ main =
 -- MODEL
 
 
-type alias Flags =
-    { clientId : ClientId
-    , screenWidth : Int
-    , baseHref : String
-    , instrument : Instrument.Model
-    }
+wrapInit : (firstArg -> Maybe Url -> Utils.TestableNavKey -> ( Model, Cmd Message )) -> firstArg -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
+wrapInit fn firstArg url navKey =
+    fn firstArg (Just url) (Utils.ActualNavKey navKey)
 
 
-init : D.Value -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
-init flags url navKey =
-    let
-        router =
-            Router.init url navKey
-    in
-    case D.decodeValue decodeFlags flags of
-        Ok decodedFlags ->
+init : Result D.Error Flags.Model -> Maybe Url -> Utils.TestableNavKey -> ( Model, Cmd Message )
+init decodeFlagsResult url navKey =
+    case decodeFlagsResult of
+        Ok flags ->
             let
                 instrument =
-                    Just decodedFlags.instrument
+                    Just flags.instrument
             in
-            ( { os = OS.init decodedFlags.clientId decodedFlags.screenWidth decodedFlags.baseHref
+            ( { os = OS.init flags.clientId flags.screenWidth
+
+              -- TODO pass voices to Instrument.init to create the instrument model
               , instrument = instrument
-              , router = router
+              , router = Router.init url navKey flags.baseHref flags.nextRoute
               , uiInstrument = User.Interface.Instrument.init
               }
             , Cmd.none
@@ -82,22 +78,13 @@ init flags url navKey =
                 errMsgWithContext =
                     Errors.instrumentDecoding errMsg
             in
-            ( { os = OS.setError errMsgWithContext (OS.init "" 0 "")
+            ( { os = OS.setError errMsgWithContext (OS.init "" 0)
               , instrument = Nothing
-              , router = router
+              , router = Router.init Nothing Utils.TestNavKey "" NotARoute
               , uiInstrument = User.Interface.Instrument.init
               }
             , PortMessage.send (PortMessage.LogError errMsgWithContext)
             )
-
-
-decodeFlags : D.Decoder Flags
-decodeFlags =
-    D.map4 Flags
-        (D.field "clientId" D.string)
-        (D.field "screenWidth" D.int)
-        (D.field "baseHref" D.string)
-        (D.field "instrument" Instrument.decoder)
 
 
 type alias Model =
@@ -117,6 +104,125 @@ type SubModels
 
 
 -- UPDATE
+
+
+type Context
+    = WithRoute Routes
+    | WithMaybeUrl (Maybe Url)
+    | WithClientId ClientId
+    | WithRouteAndVolume Routes Volume
+    | WithRouteVolumeVoiceIndexAndPitch Routes Volume Int Pitch
+    | WithRouteAndSequenceItem Routes Chord.Names
+    | WithNothing
+
+
+contextualize : Message -> Model -> Context
+contextualize msg model =
+    case msg of
+        Message.ReceivePortMessage _ _ ->
+            WithClientId model.os.clientId
+
+        Message.KeyDown event ->
+            let
+                userActionRequested =
+                    userActionForKey event.key
+
+                currentRoute =
+                    Router.currentRoute model.router
+
+                currentChordName =
+                    model.uiInstrument.activeChordName
+            in
+            case ( currentRoute, userActionRequested ) of
+                ( _, User.Interface.Open ) ->
+                    WithRoute model.router.nextRoute
+
+                ( SelectChordRoute, User.Interface.SeekForward ) ->
+                    WithRouteAndSequenceItem currentRoute (Chord.next currentChordName)
+
+                ( SelectChordRoute, User.Interface.SeekBackward ) ->
+                    WithRouteAndSequenceItem currentRoute (Chord.previous currentChordName)
+
+                _ ->
+                    WithNothing
+
+        Message.KeyUp event ->
+            let
+                currentRoute =
+                    Router.currentRoute model.router
+
+                millisSinceKeyDown =
+                    OS.milisSinceKeyDown KbdEvent.KeySpace model.os
+
+                volume =
+                    User.Interface.intensityOfKeyPress millisSinceKeyDown
+            in
+            case event.key of
+                KbdEvent.KeySpace ->
+                    WithRouteAndVolume currentRoute volume
+
+                _ ->
+                    case ( model.instrument, User.Interface.voiceIndexForKey event.key ) of
+                        ( Just instrument, Just voiceIndex ) ->
+                            let
+                                pitchMaybe =
+                                    Instrument.currentPitch voiceIndex instrument
+                            in
+                            case pitchMaybe of
+                                Just pitch ->
+                                    WithRouteVolumeVoiceIndexAndPitch currentRoute volume voiceIndex pitch
+
+                                _ ->
+                                    WithNothing
+
+                        _ ->
+                            WithNothing
+
+        _ ->
+            WithNothing
+
+
+
+-- TODO(optimize): find way to reduce the number of parameters. One way would be including the necessary info in the corresponding variants of an abstract type that wraps Message, then use that instead of Message.
+
+
+interpret : Message -> Context -> List Message
+interpret msg context =
+    case ( msg, context ) of
+        ( Message.ReceivePortMessage sender payload, WithClientId clientId ) ->
+            -- Ignore messages sent to self
+            if sender == clientId then
+                []
+
+            else
+                [ Message.ReceivePortMessage sender payload ]
+
+        ( Message.KeyDown event, WithMaybeUrl maybeUrl ) ->
+            case event.key of
+                KbdEvent.KeyEnter ->
+                    maybeUrl
+                        |> Maybe.map (\url -> [ msg, Message.UrlRequest (Browser.Internal url) ])
+                        |> Maybe.withDefault [ msg ]
+
+                _ ->
+                    [ msg ]
+
+        ( Message.KeyUp { key }, WithRouteAndVolume MainRoute intensityOfPress ) ->
+            case key of
+                KbdEvent.KeySpace ->
+                    [ msg, Message.PlayChord intensityOfPress ]
+
+                _ ->
+                    [ msg ]
+
+        ( Message.KeyUp _, WithRouteVolumeVoiceIndexAndPitch MainRoute volume voiceIndex intensityOfPress ) ->
+            [ msg, Message.PlayNote volume voiceIndex intensityOfPress ]
+
+        ( Message.KeyDown _, WithRouteAndSequenceItem SelectChordRoute chord ) ->
+            [ msg, Message.SelectChord chord ]
+
+        _ ->
+            [ msg ]
 
 
 composers : List (Modely.Composer Message Model SubModels Selectors ( SubModels, Cmd Message ))
@@ -156,80 +262,7 @@ update msg model =
     -- Translate route/message combinations into new messages for sub module updates
     let
         mappedMsgs =
-            case ( Router.currentRoute model.router, msg ) of
-                -- Ignore messages sent to self
-                ( _, Message.ReceivePortMessage clientId _ ) ->
-                    if clientId == model.os.clientId then
-                        []
-
-                    else
-                        [ msg ]
-
-                ( MainRoute, Message.KeyDown event ) ->
-                    case event.key of
-                        KbdEvent.KeyEnter ->
-                            case Url.fromString (Debug.log "requesting" (model.os.baseHref ++ "/selectchord")) of
-                                Just url ->
-                                    [ msg, Message.UrlRequest (Browser.Internal url) ]
-
-                                Nothing ->
-                                    [ msg ]
-
-                        _ ->
-                            [ msg ]
-
-                ( MainRoute, Message.KeyUp event ) ->
-                    let
-                        milisSinceKeyDown =
-                            OS.milisSinceKeyDown event.key model.os
-
-                        volume =
-                            User.Interface.intensityOfKeyPress milisSinceKeyDown
-                    in
-                    case event.key of
-                        KbdEvent.KeySpace ->
-                            [ msg, Message.PlayChord volume ]
-
-                        _ ->
-                            Maybe.map2
-                                (\instrument voiceIndex ->
-                                    case Instrument.currentPitch voiceIndex instrument of
-                                        Just pitch ->
-                                            [ msg, Message.PlayNote volume voiceIndex (Debug.log "pitch" pitch) ]
-
-                                        Nothing ->
-                                            [ msg ]
-                                )
-                                model.instrument
-                                (User.Interface.voiceIndexForKey event.key)
-                                |> Maybe.withDefault [ msg ]
-
-                ( SelectChordRoute, Message.KeyDown event ) ->
-                    let
-                        userAction =
-                            userActionForKey event.key
-                    in
-                    case userAction of
-                        User.Interface.Dismiss ->
-                            [ msg, Message.RequestPreviousUrl 1 ]
-
-                        _ ->
-                            let
-                                newChordName =
-                                    case userAction of
-                                        User.Interface.SeekForward ->
-                                            Chord.next model.uiInstrument.activeChordName
-
-                                        User.Interface.SeekBackward ->
-                                            Chord.previous model.uiInstrument.activeChordName
-
-                                        _ ->
-                                            model.uiInstrument.activeChordName
-                            in
-                            [ msg, Message.SelectChord newChordName ]
-
-                _ ->
-                    [ msg ]
+            interpret msg (contextualize msg model)
     in
     -- Send original message as well as mapped message (if there is one)
     updateSubsX mappedMsgs model

@@ -251,6 +251,7 @@ update msg instrument select =
             else
                 ( instrument, Cmd.none )
 
+        -- TODO consolidate with PlayNote
         Message.ReceivePortMessage _ rawMsg ->
             case PortMessage.decode rawMsg of
                 Ok playSound ->
