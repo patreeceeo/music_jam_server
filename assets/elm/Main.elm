@@ -45,6 +45,7 @@ main =
 
 
 -- MODEL
+-- Wrap parameters to init in abstract types so that init itself is testable
 
 
 wrapInit : (firstArg -> Maybe Url -> Utils.TestableNavKey -> ( Model, Cmd Message )) -> firstArg -> Url -> Browser.Navigation.Key -> ( Model, Cmd Message )
@@ -152,7 +153,7 @@ contextualize msg model =
                     Router.currentRoute model.router
 
                 millisSinceKeyDown =
-                    OS.milisSinceKeyDown KbdEvent.KeySpace model.os
+                    OS.milisSinceKeyDown event.key model.os
 
                 volume =
                     User.Interface.intensityOfKeyPress millisSinceKeyDown
@@ -215,8 +216,8 @@ interpret msg context =
                 _ ->
                     [ msg ]
 
-        ( Message.KeyUp _, WithRouteVolumeVoiceIndexAndPitch MainRoute volume voiceIndex intensityOfPress ) ->
-            [ msg, Message.PlayNote volume voiceIndex intensityOfPress ]
+        ( Message.KeyUp _, WithRouteVolumeVoiceIndexAndPitch MainRoute volume voiceIndex pitch ) ->
+            [ msg, Message.PlayNote volume voiceIndex pitch ]
 
         ( Message.KeyDown _, WithRouteAndSequenceItem SelectChordRoute chord ) ->
             [ msg, Message.SelectChord chord ]
@@ -479,8 +480,8 @@ mapUIInstrument update_ msg taggedModel selectors =
 subscriptions : Model -> Sub Message
 subscriptions model =
     Sub.batch
-        -- [ Browser.Events.onAnimationFrame Message.AnimationFrame
-        [ Browser.Events.onResize (\w _ -> Message.WindowResize w)
+        [ Browser.Events.onAnimationFrame Message.AnimationFrame
+        , Browser.Events.onResize (\w _ -> Message.WindowResize w)
         , Browser.Events.onVisibilityChange Message.VisibilityChange
         , Browser.Events.onKeyDown (KbdEvent.decode |> D.map Message.KeyDown)
         , Browser.Events.onKeyUp (KbdEvent.decode |> D.map Message.KeyUp)

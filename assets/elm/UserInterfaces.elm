@@ -315,6 +315,7 @@ viewString voice index time msgForMouseOver =
         , Sattr.stroke "rgba(255, 255, 255, 0.5)"
         , Sattr.fill "none"
         , onMouseOver msgForMouseOver
+        , Sattr.class "string"
         , Sattr.id ("instrument-voice-" ++ String.fromInt index)
         ]
         [ viewStringAnimation voice index time ]
@@ -322,9 +323,8 @@ viewString voice index time msgForMouseOver =
 
 viewStrings : Instrument.Model -> OS.Model -> (Int -> MouseEvent.Model -> msg) -> List (Svg.Svg msg)
 viewStrings instrumentModel osModel msgForMouseOver =
-    List.indexedMap
-        (\index voice -> viewString voice index osModel.timeInMillis (msgForMouseOver index))
-        (Array.toList instrumentModel.voices)
+    Array.toList instrumentModel.voices
+        |> List.indexedMap (\index voice -> viewString voice index osModel.timeInMillis (msgForMouseOver index))
 
 
 viewDebugVoiceNote : Int -> ( Int, Float ) -> Svg.Svg msg
