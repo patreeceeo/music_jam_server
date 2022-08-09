@@ -2,7 +2,7 @@ module Instrument exposing (Model, Voice, chordNotes, currentPitch, decoder, fre
 
 import Array exposing (Array)
 import Chord
-import CommonTypes exposing (Pitch, QTime, Selectors, Volume)
+import CommonTypes exposing (ClientId, Pitch, QTime, Selectors, Volume)
 import Json.Decode as D
 import List.Extra
 import Maybe.Extra
@@ -185,10 +185,10 @@ setChordComponent voiceIndex maybePitch model =
             )
 
 
-chordNotes : Volume -> Model -> List PortMessage.PlaySoundRecord
-chordNotes volume model =
+chordNotes : Volume -> Model -> ClientId -> List PortMessage.PlaySoundRecord
+chordNotes volume model clientId =
     Array.toList model.voices
-        |> List.indexedMap (\index voice -> voice.currentPitch |> Maybe.map (\pitch -> PortMessage.PlaySoundRecord "acoustic-guitar" index pitch volume))
+        |> List.indexedMap (\index voice -> voice.currentPitch |> Maybe.map (\pitch -> PortMessage.PlaySoundRecord "acoustic-guitar" index pitch volume clientId))
         |> List.filterMap identity
 
 
@@ -201,12 +201,15 @@ update msg instrument select =
     let
         timeInMillis =
             select.timeInMillis ()
+
+        clientId =
+            select.clientId ()
     in
     case msg of
         Message.PlayChord volume ->
             let
                 notes =
-                    chordNotes volume instrument
+                    chordNotes volume instrument clientId
             in
             ( Utils.mapAccumr (\acc note -> playNote note.voiceIndex note.pitch note.volume timeInMillis acc) instrument notes
             , Cmd.batch (List.Extra.reverseMap (\playSound -> PortMessage.send (PortMessage.PlaySound playSound)) notes)
@@ -214,7 +217,7 @@ update msg instrument select =
 
         Message.PlayNote volume voiceIndex pitch ->
             ( playNote voiceIndex pitch volume timeInMillis instrument
-            , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume })
+            , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = voiceIndex, pitch = pitch, volume = volume, originatingClient = clientId })
             )
 
         -- TODO replace MouseOverVoice with PlayNote
@@ -231,7 +234,7 @@ update msg instrument select =
                 case pitchResult of
                     Ok pitch ->
                         ( playNote index pitch mouseOverVoiceVolume timeInMillis instrument
-                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume })
+                        , PortMessage.send (PortMessage.PlaySound { soundId = "acoustic-guitar", voiceIndex = index, pitch = pitch, volume = mouseOverVoiceVolume, originatingClient = clientId })
                         )
 
                     Err errMsg ->
@@ -257,9 +260,13 @@ update msg instrument select =
                 Ok playSound ->
                     case playSound.data of
                         PortMessage.PlaySound data ->
-                            ( playNote data.voiceIndex data.pitch data.volume timeInMillis instrument
-                            , Cmd.none
-                            )
+                            if data.originatingClient /= clientId then
+                                ( playNote data.voiceIndex data.pitch data.volume timeInMillis instrument
+                                , Cmd.none
+                                )
+
+                            else
+                                ( instrument, Cmd.none )
 
                         _ ->
                             ( instrument, Cmd.none )

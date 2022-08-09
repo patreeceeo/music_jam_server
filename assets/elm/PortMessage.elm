@@ -1,5 +1,6 @@
 port module PortMessage exposing (Message(..), PlaySoundRecord, RawMessage, decode, encode, receive, send)
 
+import CommonTypes exposing (ClientId)
 import Json.Decode as D
 import Json.Encode as E
 
@@ -13,7 +14,7 @@ type alias ParsedMessage =
 
 
 type alias PlaySoundRecord =
-    { soundId : String, voiceIndex : Int, pitch : Float, volume : Float }
+    { soundId : String, voiceIndex : Int, pitch : Float, volume : Float, originatingClient : ClientId }
 
 
 type Message
@@ -50,6 +51,7 @@ encode msg =
                         , ( "voiceIndex", E.int data.voiceIndex )
                         , ( "pitch", E.float data.pitch )
                         , ( "volume", E.float data.volume )
+                        , ( "originatingClient", E.string data.originatingClient )
                         ]
                   )
                 ]
@@ -104,9 +106,10 @@ decoder_playSound =
 decoder_playSoundData : D.Decoder Message
 decoder_playSoundData =
     D.map PlaySound
-        (D.map4 PlaySoundRecord
+        (D.map5 PlaySoundRecord
             (D.field "soundId" D.string)
             (D.field "voiceIndex" D.int)
             (D.field "pitch" D.float)
             (D.field "volume" D.float)
+            (D.field "originatingClient" D.string)
         )

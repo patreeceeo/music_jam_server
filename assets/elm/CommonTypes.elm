@@ -52,6 +52,7 @@ type alias Selectors =
     , timeInMillis : () -> Int
     , screenWidth : () -> Int
     , currentRoute : () -> Routes
+    , clientId : () -> ClientId
     }
 
 

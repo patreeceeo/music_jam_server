@@ -69,9 +69,9 @@ testMessagesForMappedChord =
                         |> Instrument.setActiveChord chord
 
                 expected =
-                    [ PortMessage.PlaySoundRecord "acoustic-guitar" 1 2.0 4.2
-                    , PortMessage.PlaySoundRecord "acoustic-guitar" 2 5.0 4.2
+                    [ PortMessage.PlaySoundRecord "acoustic-guitar" 1 2.0 4.2 "peele"
+                    , PortMessage.PlaySoundRecord "acoustic-guitar" 2 5.0 4.2 "peele"
                     ]
             in
-            Expect.equal expected (Instrument.chordNotes 4.2 instrument)
+            Expect.equal expected (Instrument.chordNotes 4.2 instrument "peele")
     ]

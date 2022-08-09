@@ -120,9 +120,6 @@ type Context
 contextualize : Message -> Model -> Context
 contextualize msg model =
     case msg of
-        Message.ReceivePortMessage _ _ ->
-            WithClientId model.os.clientId
-
         Message.KeyDown event ->
             let
                 userActionRequested =
@@ -190,14 +187,6 @@ contextualize msg model =
 interpret : Message -> Context -> List Message
 interpret msg context =
     case ( msg, context ) of
-        ( Message.ReceivePortMessage sender payload, WithClientId clientId ) ->
-            -- Ignore messages sent to self
-            if sender == clientId then
-                []
-
-            else
-                [ Message.ReceivePortMessage sender payload ]
-
         ( Message.KeyDown event, WithMaybeUrl maybeUrl ) ->
             case event.key of
                 KbdEvent.KeyEnter ->
@@ -255,6 +244,7 @@ bindSelectors model =
     , timeInMillis = \() -> model.os.timeInMillis
     , screenWidth = \() -> model.os.screenWidth
     , currentRoute = \() -> Router.currentRoute model.router
+    , clientId = \() -> model.os.clientId
     }
 
 
